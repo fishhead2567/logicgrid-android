@@ -303,11 +303,60 @@ object Board {
         val schema = puzzle.schema
         val rows = LinkedHashMap<String, List<String?>>()
         rows[schema.spineName] = schema.spine.items
+
+        // A circle means "these are the same entity", and that chains.  Circle
+        // builder-score and builder-biome and the biome's score is pinned, with
+        // no mark in the biome-score block at all -- which is how a logic grid
+        // is normally solved: you fill the blocks the clues talk about and read
+        // the rest off.
+        //
+        // Reading each category only against the spine made the answer sheet
+        // depend on *which* blocks the player filled rather than on what they
+        // had actually determined.  A complete and correct solve still showed
+        // "?" for every row, unless assist happened to be on and supplied the
+        // transitive marks -- so the board asked for busywork and withheld the
+        // solved state until it got it.  Whether the answer is determined is a
+        // question about consequence, not about where the ink is, so it must
+        // not depend on the assist setting.
+        val linked = HashMap<Ref, MutableSet<Ref>>()
+        for ((cell, value) in closure.marks) {
+            if (value != true) continue
+            linked.getOrPut(cell.a) { mutableSetOf() }.add(cell.b)
+            linked.getOrPut(cell.b) { mutableSetOf() }.add(cell.a)
+        }
+
+        /**
+         * The one spine item reachable from [start] through circles, or null.
+         *
+         * Stops at the first spine ref on each path rather than walking past
+         * it: beyond a spine value lie *other* entities, and chaining through
+         * would conflate them.  Two reachable spine items means the marks
+         * contradict each other -- possible without assist, since nothing
+         * cross-checks the blocks then -- and that is not an answer, so it
+         * stays unplaced and [mistakes] reports it.
+         */
+        fun spineOf(start: Ref): Ref? {
+            val seen = mutableSetOf(start)
+            val queue = ArrayDeque(listOf(start))
+            val found = mutableSetOf<Ref>()
+            while (queue.isNotEmpty()) {
+                val cur = queue.removeFirst()
+                if (cur.cat == schema.spineName) {
+                    found += cur
+                    continue
+                }
+                for (next in linked[cur].orEmpty()) {
+                    if (seen.add(next)) queue += next
+                }
+            }
+            return found.singleOrNull()
+        }
+
         for (cat in schema.otherCategories()) {
             val row = arrayOfNulls<String>(schema.size)
             for (ref in cat.refs()) {
-                val (yes, _) = linksFor(puzzle, closure, ref, schema.spineName)
-                if (yes.size == 1) row[schema.spine.index(yes[0].item)] = ref.item
+                val spine = spineOf(ref) ?: continue
+                row[schema.spine.index(spine.item)] = ref.item
             }
             rows[cat.name] = row.toList()
         }
