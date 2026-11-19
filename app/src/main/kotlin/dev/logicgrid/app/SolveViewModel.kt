@@ -28,6 +28,7 @@ import dev.logicgrid.core.Size as CoreSize
 class SolveViewModel(
     val puzzle: Puzzle,
     private val store: ProgressStore = InMemoryProgressStore(),
+    private val prefs: ViewPrefs = store as? ViewPrefs ?: InMemoryProgressStore(),
 ) : ViewModel() {
 
     private val history = ArrayDeque<BoardState>()
@@ -58,10 +59,10 @@ class SolveViewModel(
      * a much taller header band, so the two modes need different margins --
      * which is why this rebuilds the geometry rather than setting a flag on it.
      */
-    var rotatedHeaders: Boolean by mutableStateOf(false)
+    var rotatedHeaders: Boolean by mutableStateOf(prefs.rotatedHeaders)
         private set
 
-    var geometry: GridGeometry by mutableStateOf(geometryFor(false))
+    var geometry: GridGeometry by mutableStateOf(geometryFor(prefs.rotatedHeaders))
         private set
 
     private fun geometryFor(rotated: Boolean, zoom: Float = 1f, pan: Pt = Pt(0f, 0f)) =
@@ -76,6 +77,9 @@ class SolveViewModel(
 
     fun toggleHeaderStyle() {
         rotatedHeaders = !rotatedHeaders
+        // A way of reading the chart, not a property of this puzzle: carry it
+        // to every puzzle the player opens from now on.
+        prefs.rotatedHeaders = rotatedHeaders
         // Pan is in pixels from a corner that just moved, so carrying it over
         // would shift the chart by the difference in margins. Start at rest.
         geometry = geometryFor(rotatedHeaders, zoom = geometry.zoom)

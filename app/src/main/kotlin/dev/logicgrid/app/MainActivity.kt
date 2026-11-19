@@ -8,14 +8,21 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -59,7 +66,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                Surface(Modifier.fillMaxSize()) { AppRoot() }
+                Surface(
+                    Modifier
+                        .fillMaxSize()
+                        // From Android 15 every app is laid out edge to edge
+                        // whether it opts in or not, so without this the first
+                        // rows sit under the status bar and the clock eats
+                        // their taps. safeDrawing covers the cutout too.
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                ) { AppRoot() }
             }
         }
     }
@@ -117,9 +132,11 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(4.dp, 6.dp, 12.dp, 0.dp),
+            Modifier.fillMaxWidth().padding(4.dp, 2.dp, 4.dp, 0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Leaving stays a single tap, and mirrors the back gesture. Only
+            // the settings move behind the overflow.
             TextButton(onClick = onExit, modifier = Modifier.testTag("exit")) {
                 Text("‹  Menu")
             }
@@ -129,6 +146,7 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
             )
+            ViewMenu(model)
         }
         Text(
             "${puzzle.profile} ${puzzle.rating}/7 — " +
@@ -206,12 +224,6 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
             OutlinedButton({ model.nudge(0, 1) }, Modifier.testTag("right")) { Text("→") }
             OutlinedButton({ model.nudge(-1, 0) }, Modifier.testTag("up")) { Text("↑") }
             OutlinedButton({ model.nudge(1, 0) }, Modifier.testTag("down")) { Text("↓") }
-            OutlinedButton({ model.toggleAssist() }, Modifier.testTag("assist")) {
-                Text(if (model.assist) "Assist" else "No assist")
-            }
-            OutlinedButton({ model.toggleHeaderStyle() }, Modifier.testTag("headers")) {
-                Text(if (model.rotatedHeaders) "Turned" else "Short")
-            }
         }
 
         AnswerSheet(puzzle, model.answer)
@@ -237,6 +249,46 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
         }
     }
 }
+
+/**
+ * View settings, behind an overflow.
+ *
+ * They were two more buttons in the control row, which pushed it past the
+ * screen and cost a scroll to reach the arrows -- the controls used most. A
+ * setting is touched once a session; a nudge is touched constantly. Putting
+ * the rare thing behind a tap to keep the common thing immediate is the right
+ * way round, and it costs no vertical space at all.
+ */
+@Composable
+private fun ViewMenu(model: SolveViewModel) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { open = true }, modifier = Modifier.testTag("viewMenu")) {
+            Text("⋮", style = MaterialTheme.typography.titleLarge)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(check(model.assist) + "Assist") },
+                onClick = { model.toggleAssist(); open = false },
+                modifier = Modifier.testTag("menuAssist"),
+            )
+            DropdownMenuItem(
+                text = { Text(check(model.rotatedHeaders) + "Turned labels") },
+                onClick = { model.toggleHeaderStyle(); open = false },
+                modifier = Modifier.testTag("menuHeaders"),
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text("Reset this puzzle") },
+                onClick = { model.reset(); open = false },
+                modifier = Modifier.testTag("menuReset"),
+            )
+        }
+    }
+}
+
+/** A tick in the text, so state does not rest on colour or position alone. */
+private fun check(on: Boolean): String = if (on) "✓  " else "    "
 
 /**
  * Solving is the one moment the player is certainly finished, so it is the one

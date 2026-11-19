@@ -237,10 +237,14 @@ private fun DrawScope.drawChart(
         val rect = g.rowHeaderRect(row)
         if (rect.bottom < g.scaledHeader || rect.top > size.height) continue
         val l = layout(labelFor(g.rowRef(row)), labelStyle)
-        drawText(
-            l,
-            topLeft = Offset(4f, rect.centre.y - l.size.height / 2f),
-        )
+        // Right-aligned against the gutter edge, so a label always sits
+        // against the grid it labels. Left-aligning looks fine at 1x and then
+        // drifts: the gutter scales with zoom, so the gap between the end of
+        // the text and the first cell grows with every pinch, until the label
+        // is reading at nothing. Clamped so a label wider than the gutter
+        // spills right, over the dead corner, rather than off-screen left.
+        val x = maxOf(2f, g.scaledGutter - l.size.width - 6f)
+        drawText(l, topLeft = Offset(x, rect.centre.y - l.size.height / 2f))
     }
     for (col in 0 until g.cols) {
         val rect = g.colHeaderRect(col)
