@@ -1,9 +1,22 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
 }
 
-kotlin { jvmToolchain(21) }
+// Compiled by JDK 21 but emitting Java 17 bytecode: :core is consumed by the
+// Android module, so its target has to be one Android accepts. The toolchain
+// and the target are different things and must be set separately.
+kotlin {
+    jvmToolchain(21)
+    compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
 
 dependencies {
     implementation(libs.kotlinx.serialization.json)
@@ -13,5 +26,5 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-    testLogging { events("passed", "failed", "skipped"); showStandardStreams = false }
+    testLogging { events("failed"); showStandardStreams = false }
 }

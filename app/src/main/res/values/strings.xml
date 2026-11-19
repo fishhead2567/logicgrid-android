@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LogicGrid</string>
+    <string name="mark_together">O</string>
+    <string name="mark_apart">X</string>
+    <string name="clear">Clear</string>
+    <string name="undo">Undo</string>
+    <string name="check">Check</string>
+    <string name="assist">Assist</string>
+    <string name="clues">Clues</string>
+
+    <!-- Conflict messages. ConflictReason is structured data in :core so that
+         this copy lives here, where it can be translated. -->
+    <string name="conflict_same_category">%1$s and %2$s are both %3$s, so they are never the same entry.</string>
+    <string name="conflict_already_held_together">That clashes with the board: %1$s and %2$s already go together.</string>
+    <string name="conflict_already_held_apart">That clashes with the board: %1$s and %2$s already do not go together.</string>
+    <string name="conflict_nowhere_to_go">That would rule out every %2$s for %1$s, leaving nowhere for it to go.</string>
+</resources>
