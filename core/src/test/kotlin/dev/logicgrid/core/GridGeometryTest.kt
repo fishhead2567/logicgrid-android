@@ -274,3 +274,65 @@ class GridGeometryTest {
         assertTrue(at44.width > 1000f, "expected >1000px at 44dp cells, got ${at44.width}")
     }
 }
+
+/**
+ * Panning is clamped against the viewport, which makes an inaccurate viewport
+ * a silent feature-killer rather than a visible error: claim a bigger window
+ * than you have and the clamp concludes the chart already fits, pins pan to
+ * zero, and the player simply cannot move. That shipped once, so it is pinned
+ * here.
+ */
+class ClampPanAgainstViewportTest {
+    private fun geometry(categories: Int, items: Int, zoom: Float = 1f): GridGeometry {
+        val cats = (0 until categories).map { c ->
+            Category("cat$c", "Cat $c", (0 until items).map { "c$c-i$it" })
+        }
+        val schema = Schema(cats, spineName = cats.first().name)
+        return GridGeometry(schema, cellPx = 40f, gutterPx = 96f, headerPx = 72f, zoom = zoom)
+    }
+
+    /** A real phone: full width, but the chart only gets part of the height. */
+    private val phone = Size(1080f, 630f)
+
+    @Test
+    fun `a chart taller than its viewport pans vertically`() {
+        // 5x5 is 20x20 cells: 896 wide, 872 tall. It fits 1080 across and so is
+        // pinned horizontally -- correctly -- but 872 does not fit 630.
+        val g = geometry(categories = 5, items = 5)
+        val panned = g.clampPan(Pt(-300f, -500f), phone)
+        assertEquals(0f, panned.x, "fits across, so there is nothing to pan to")
+        assertTrue(panned.y < 0f, "taller than the viewport, so it must pan")
+    }
+
+    @Test
+    fun `an over-large viewport silently disables panning`() {
+        // The shape of the shipped bug: the chart area was guessed at
+        // 1000x1600 when it was really about 1080x630, so the clamp concluded
+        // the chart already fitted and pinned pan to zero in both directions.
+        val g = geometry(categories = 5, items = 5)
+        assertEquals(0f, g.clampPan(Pt(-300f, -500f), Size(1000f, 1600f)).y,
+            "an overstated viewport kills vertical pan")
+        assertTrue(g.clampPan(Pt(-300f, -500f), phone).y < 0f,
+            "the same gesture works against the measured viewport")
+    }
+
+    @Test
+    fun `panning stops exactly at the far edge of the chart`() {
+        val g = geometry(categories = 5, items = 5)
+        val content = g.contentSize()
+        val far = g.clampPan(Pt(-99999f, -99999f), phone)
+        // Panning to the limit puts the chart's far edge at the viewport's.
+        assertEquals(phone.height - content.height, far.y, 0.01f)
+        assertEquals(0f, far.x, "never scrolls an axis that already fits")
+        assertEquals(Pt(0f, 0f), g.clampPan(Pt(500f, 500f), phone),
+            "and never past the origin the other way")
+    }
+
+    @Test
+    fun `zooming in makes a chart that fitted pannable`() {
+        val small = geometry(categories = 3, items = 4)   // 8x8 cells: 416x392
+        assertEquals(0f, small.clampPan(Pt(-200f, -200f), phone).y, "fits at 1x")
+        assertTrue(small.withZoom(2f).clampPan(Pt(-200f, -200f), phone).y < 0f,
+            "pannable once zoomed")
+    }
+}

@@ -83,6 +83,9 @@ class SolveViewModel(
         // Pan is in pixels from a corner that just moved, so carrying it over
         // would shift the chart by the difference in margins. Start at rest.
         geometry = geometryFor(rotatedHeaders, zoom = geometry.zoom)
+        if (viewport.width > 0f) {
+            geometry = geometry.withPan(geometry.clampPan(geometry.pan, viewport))
+        }
     }
 
     enum class Outcome { Playing, Solved, Wrong }
@@ -212,12 +215,27 @@ class SolveViewModel(
 
     fun consumeConflict() { conflict = null }
 
-    fun onTransform(zoom: Float, pan: Pt, viewport: CoreSize) {
+    /** The chart's measured size. Zero until the first layout pass. */
+    var viewport: CoreSize by mutableStateOf(CoreSize(0f, 0f))
+        private set
+
+    fun onViewportChanged(size: CoreSize) {
+        viewport = size
+        // Re-clamp: a rotation or a window resize can shrink the viewport and
+        // strand already-panned content off-screen with no way back.
+        geometry = geometry.withPan(geometry.clampPan(geometry.pan, size))
+    }
+
+    fun onTransform(zoom: Float, pan: Pt) {
+        // Before the first measurement there is nothing to clamp against, and
+        // clamping against zero would pin the chart permanently.
+        if (viewport.width <= 0f || viewport.height <= 0f) return
         val zoomed = geometry.withZoom(zoom)
         geometry = zoomed.withPan(zoomed.clampPan(pan, viewport))
     }
 
-    fun fitWidth(viewport: CoreSize) {
+    fun fitWidth() {
+        if (viewport.width <= 0f) return
         val zoomed = geometry.withZoom(geometry.zoomToFitWidth(viewport))
         geometry = zoomed.withPan(zoomed.clampPan(Pt(0f, 0f), viewport))
     }

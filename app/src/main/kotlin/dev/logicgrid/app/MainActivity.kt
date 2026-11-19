@@ -46,7 +46,6 @@ import dev.logicgrid.core.LibraryEntry
 import dev.logicgrid.core.ManifestJson
 import dev.logicgrid.core.Puzzle
 import dev.logicgrid.core.PuzzleJson
-import dev.logicgrid.core.Size as CoreSize
 
 /** Reads the content bundled in assets. The network is never on this path. */
 object AssetContent {
@@ -127,7 +126,6 @@ fun AppRoot() {
 @Composable
 fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
     val model = remember(puzzle.pid) { SolveViewModel(puzzle, store) }
-    val viewport = remember { CoreSize(1000f, 1600f) }
     val selected = model.selected
 
     Column(Modifier.fillMaxSize()) {
@@ -169,9 +167,10 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
                 selected = selected,
                 geometry = model.geometry,
                 rotatedHeaders = model.rotatedHeaders,
-                onTransform = { zoom, pan -> model.onTransform(zoom, pan, viewport) },
+                onTransform = { zoom, pan -> model.onTransform(zoom, pan) },
                 onCellTap = { model.select(it) },
                 onHeaderTap = { },
+                onViewportChanged = model::onViewportChanged,
             )
         }
 

@@ -9,6 +9,8 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -72,6 +74,7 @@ fun CompositeGrid(
     onTransform: (zoom: Float, pan: Pt) -> Unit,
     onCellTap: (GridCell) -> Unit,
     onHeaderTap: (GridHit) -> Unit,
+    onViewportChanged: (CoreSize) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val current: State<GridGeometry> = rememberUpdatedState(geometry)
@@ -97,6 +100,15 @@ fun CompositeGrid(
     Box(
         modifier = modifier
             .fillMaxSize()
+            // Compose does NOT clip a Canvas to its bounds. Without this the
+            // selection highlight -- a full row and column, sized from the
+            // chart rather than the viewport -- paints straight over the
+            // status line, the buttons and the clue text below.
+            .clipToBounds()
+            // The real measured size. Panning is clamped against the viewport,
+            // so a guessed one silently disables it: guess too large and the
+            // clamp decides the chart already fits and pins pan to zero.
+            .onSizeChanged { onViewportChanged(CoreSize(it.width.toFloat(), it.height.toFloat())) }
             // Two detectors, not Modifier.transformable: that claims
             // single-pointer drags and can starve the tap detector, and the end
             // of a pan commonly emits a spurious tap -- which would select a
