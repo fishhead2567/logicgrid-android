@@ -1,0 +1,3 @@
+# Bundled puzzle assets are checksum-verified against the manifest; line
+# ending conversion would change their bytes. See logicgrid-puzzles.
+*.json -text
