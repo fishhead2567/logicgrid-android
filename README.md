@@ -29,12 +29,14 @@ description of what is here.
 
 ## Building
 
-Open the project in **Android Studio** and run the `:app` configuration.
+```
+./gradlew :core:test :app:assembleDebug     # tests, then a debug APK
+```
 
-> **There is no Gradle wrapper in this repo yet** — no `gradlew`, no
-> `gradle/wrapper/`. Android Studio supplies its own Gradle distribution so it
-> builds fine there, but `./gradlew` from a clone will not work and neither will
-> CI. Generating one is a known to-do.
+The wrapper is committed and pins Gradle 8.14.3 by SHA-256, so a clone needs
+only a JDK: the first run downloads and verifies the distribution itself.
+Point `JAVA_HOME` at a JDK 21. Android Studio works too — open the project and
+run the `:app` configuration.
 
 Requirements, as declared in the build files:
 

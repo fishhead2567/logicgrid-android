@@ -1,3 +1,11 @@
 # Bundled puzzle assets are checksum-verified against the manifest; line
 # ending conversion would change their bytes. See logicgrid-puzzles.
 *.json -text
+
+# The Gradle wrapper. gradlew is a POSIX shell script: with core.autocrlf=true
+# -- the default on Windows -- a checkout would give it CRLF endings and every
+# Linux and CI run would fail with "bad interpreter". The .bat is the mirror
+# case, and the wrapper jar must never be touched as text.
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+*.jar binary
