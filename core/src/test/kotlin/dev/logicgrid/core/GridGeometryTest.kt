@@ -2,6 +2,7 @@ package dev.logicgrid.core
 
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -334,5 +335,96 @@ class ClampPanAgainstViewportTest {
         assertEquals(0f, small.clampPan(Pt(-200f, -200f), phone).y, "fits at 1x")
         assertTrue(small.withZoom(2f).clampPan(Pt(-200f, -200f), phone).y < 0f,
             "pannable once zoomed")
+    }
+}
+
+/**
+ * Arrow navigation moves the selection without moving the chart, so on any
+ * puzzle bigger than the window the selection can walk off the edge and the
+ * status line ends up describing a cell nobody can see.
+ */
+class PanToRevealTest {
+    private fun geometry(categories: Int, items: Int, zoom: Float = 1f): GridGeometry {
+        val cats = (0 until categories).map { c ->
+            Category("cat$c", "Cat $c", (0 until items).map { "c$c-i$it" })
+        }
+        return GridGeometry(
+            Schema(cats, spineName = cats.first().name),
+            cellPx = 40f, gutterPx = 96f, headerPx = 72f, zoom = zoom,
+        )
+    }
+
+    private val phone = Size(1080f, 630f)
+
+    /** Is the cell wholly inside the region cells are actually drawn in? */
+    private fun visible(g: GridGeometry, cell: GridCell, viewport: Size): Boolean {
+        val r = g.cellRect(cell.row, cell.col)
+        return r.left >= g.scaledGutter - 0.01f && r.right <= viewport.width + 0.01f &&
+            r.top >= g.scaledHeader - 0.01f && r.bottom <= viewport.height + 0.01f
+    }
+
+    @Test
+    fun `a cell below the fold is brought into view`() {
+        val g = geometry(categories = 5, items = 5)
+        val far = GridCell(19, 3)
+        assertFalse(visible(g, far, phone), "precondition: starts off-screen")
+        val moved = g.withPan(g.panToReveal(far, phone))
+        assertTrue(visible(moved, far, phone), "must be visible after revealing")
+    }
+
+    @Test
+    fun `every cell can be reached by revealing it`() {
+        val g = geometry(categories = 5, items = 6)
+        for (row in 0 until g.rows) {
+            for (col in 0 until g.cols) {
+                if (!g.isUsable(row, col)) continue
+                val cell = GridCell(row, col)
+                val moved = g.withPan(g.panToReveal(cell, phone))
+                assertTrue(visible(moved, cell, phone), "unreachable: $row,$col")
+            }
+        }
+    }
+
+    @Test
+    fun `a cell already in view does not move the chart`() {
+        val g = geometry(categories = 5, items = 5)
+        val near = GridCell(1, 1)
+        assertTrue(visible(g, near, phone))
+        assertEquals(g.pan, g.panToReveal(near, phone), "no gratuitous scrolling")
+    }
+
+    @Test
+    fun `revealing never scrolls past the chart edges`() {
+        val g = geometry(categories = 5, items = 6)
+        for (row in listOf(0, g.rows - 1)) {
+            for (col in listOf(0, g.cols - 1)) {
+                val p = g.panToReveal(GridCell(row, col), phone)
+                assertEquals(p, g.clampPan(p, phone), "reveal must respect the clamp at $row,$col")
+            }
+        }
+    }
+
+    @Test
+    fun `a cell wider than the window shows its near edge`() {
+        // Zoomed far enough that one cell exceeds the visible strip; the cell
+        // should pin to the gutter rather than flip-flop between its edges.
+        val g = geometry(categories = 3, items = 4, zoom = 1f)
+        val huge = g.withZoom(40f)
+        val moved = huge.withPan(huge.panToReveal(GridCell(3, 3), phone))
+        val r = moved.cellRect(3, 3)
+        assertEquals(moved.scaledGutter, r.left, 0.5f)
+    }
+
+    @Test
+    fun `cells never hide under the sticky headers`() {
+        // The headers paint over the cells, and hitTest agrees a cell beneath
+        // them is not there, so revealing must stop short of them.
+        val g = geometry(categories = 5, items = 5)
+        for (cell in listOf(GridCell(0, 0), GridCell(19, 19), GridCell(0, 19))) {
+            val moved = g.withPan(g.panToReveal(cell, phone))
+            val r = moved.cellRect(cell.row, cell.col)
+            assertTrue(r.left >= moved.scaledGutter - 0.01f, "under the row labels: $cell")
+            assertTrue(r.top >= moved.scaledHeader - 0.01f, "under the column labels: $cell")
+        }
     }
 }

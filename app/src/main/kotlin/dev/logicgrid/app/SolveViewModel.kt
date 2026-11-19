@@ -85,6 +85,7 @@ class SolveViewModel(
         geometry = geometryFor(rotatedHeaders, zoom = geometry.zoom)
         if (viewport.width > 0f) {
             geometry = geometry.withPan(geometry.clampPan(geometry.pan, viewport))
+            revealAfterLayout()
         }
     }
 
@@ -122,12 +123,35 @@ class SolveViewModel(
     fun markAt(cell: GridCell): Boolean? =
         geometry.canonicalAt(cell.row, cell.col)?.let { closure[it] }
 
-    fun select(cell: GridCell) {
-        // Tap selects; tapping the already-selected cell cycles it. No size
-        // threshold: making the behaviour depend on zoom means the player
-        // cannot tell which they will get, and the fast path would be off at
-        // exactly the zoom levels where solving is slowest.
-        if (selected == cell) cycle(cell) else selected = cell
+    /**
+     * Tap selects; tapping the already-selected cell cycles it. No size
+     * threshold: making the behaviour depend on zoom means the player cannot
+     * tell which they will get, and the fast path would be off at exactly the
+     * zoom levels where solving is slowest.
+     *
+     * [reveal] scrolls the chart to the cell. A tap never needs it -- the
+     * player just touched the cell, so it is on screen by definition, and
+     * scrolling under their finger would be jarring. Arrow navigation always
+     * needs it, since the selection can move past the edge.
+     */
+    fun select(cell: GridCell, reveal: Boolean = false) {
+        if (selected == cell) {
+            cycle(cell)
+        } else {
+            selected = cell
+        }
+        if (reveal) revealSelection()
+    }
+
+    /** Bring the selected cell into view, moving the chart as little as
+     *  possible. Half a cell of margin so the selection does not sit flush
+     *  against the gutter, where it reads as clipped. */
+    fun revealSelection() {
+        val cell = selected ?: return
+        if (viewport.width <= 0f || viewport.height <= 0f) return
+        geometry = geometry.withPan(
+            geometry.panToReveal(cell, viewport, margin = geometry.scaledCell / 2f)
+        )
     }
 
     fun cycle(cell: GridCell) {
@@ -158,7 +182,10 @@ class SolveViewModel(
             row += dRow
             col += dCol
             if (row !in 0 until geometry.rows || col !in 0 until geometry.cols) return
-            if (geometry.isUsable(row, col)) { selected = GridCell(row, col); return }
+            if (geometry.isUsable(row, col)) {
+                select(GridCell(row, col), reveal = true)
+                return
+            }
         }
     }
 
@@ -196,7 +223,9 @@ class SolveViewModel(
         }
     }
 
-    fun reveal() {
+    /** Fill the board from the answer key. Distinct from revealSelection,
+     *  which only scrolls. */
+    fun revealSolution() {
         val r = Board.fromSolution(puzzle, state.assist)
         history.addLast(state)
         state = r.state
@@ -224,6 +253,7 @@ class SolveViewModel(
         // Re-clamp: a rotation or a window resize can shrink the viewport and
         // strand already-panned content off-screen with no way back.
         geometry = geometry.withPan(geometry.clampPan(geometry.pan, size))
+        revealAfterLayout()
     }
 
     fun onTransform(zoom: Float, pan: Pt) {
@@ -232,6 +262,11 @@ class SolveViewModel(
         if (viewport.width <= 0f || viewport.height <= 0f) return
         val zoomed = geometry.withZoom(zoom)
         geometry = zoomed.withPan(zoomed.clampPan(pan, viewport))
+    }
+
+    /** Keep the selection in view when the chart itself is re-laid-out. */
+    private fun revealAfterLayout() {
+        if (selected != null) revealSelection()
     }
 
     fun fitWidth() {

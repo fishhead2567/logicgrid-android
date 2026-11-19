@@ -196,6 +196,47 @@ class GridGeometry(
     }
 
     /** Keep the content from being panned away from the viewport. */
+    /**
+     * The pan that brings [cell] fully into view, moving as little as possible.
+     *
+     * Needed because keyboard-style navigation moves the selection without
+     * moving the chart: arrow off the visible edge of a 5x6 and the selection
+     * is somewhere below the fold, with the status line describing a cell that
+     * cannot be seen.
+     *
+     * The visible region for *cells* is not the whole viewport. The gutter and
+     * the header are painted over the top of it, so a cell nudged under them
+     * is occluded -- and [hitTest] already agrees it is not there. The target
+     * region therefore starts at [scaledGutter] and [scaledHeader], not at
+     * zero, or the first column would slide under the row labels and look
+     * lost.
+     *
+     * A cell larger than the region it must fit into is pinned to the
+     * near edge, so a heavily zoomed chart still shows the cell's top-left
+     * rather than oscillating.
+     */
+    fun panToReveal(cell: GridCell, viewport: Size, margin: Float = 0f): Pt {
+        if (viewport.width <= 0f || viewport.height <= 0f) return pan
+        val rect = cellRect(cell.row, cell.col)
+
+        fun adjust(near: Float, far: Float, lo: Float, hi: Float, current: Float): Float {
+            val room = hi - lo
+            // Nothing sensible to do if the cell cannot fit; show its start.
+            if (far - near >= room) return current + (lo - near)
+            return when {
+                near - margin < lo -> current + (lo - (near - margin))
+                far + margin > hi -> current - ((far + margin) - hi)
+                else -> current
+            }
+        }
+
+        val wanted = Pt(
+            x = adjust(rect.left, rect.right, scaledGutter, viewport.width, pan.x),
+            y = adjust(rect.top, rect.bottom, scaledHeader, viewport.height, pan.y),
+        )
+        return clampPan(wanted, viewport)
+    }
+
     fun clampPan(candidate: Pt, viewport: Size): Pt {
         val content = contentSize()
         val spanX = content.width - scaledGutter
