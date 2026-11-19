@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "steps": 30,
+  "fixtures": [
+    {
+      "file": "01-kite.board.json",
+      "pid": "89f5280affb0",
+      "categories": 3,
+      "items": 4
+    },
+    {
+      "file": "02-regatta.board.json",
+      "pid": "4e6bca5074dc",
+      "categories": 3,
+      "items": 4
+    },
+    {
+      "file": "03-county_fair.board.json",
+      "pid": "65dfd2b93c53",
+      "categories": 3,
+      "items": 4
+    },
+    {
+      "file": "04-pigeon.board.json",
+      "pid": "a7db3a10cde0",
+      "categories": 3,
+      "items": 4
+    },
+    {
+      "file": "05-cheese.board.json",
+      "pid": "4c437f283d38",
+      "categories": 3,
+      "items": 4
+    },
+    {
+      "file": "06-kite.board.json",
+      "pid": "62c05f182b20",
+      "categories": 3,
+      "items": 4
+    },
+    {
+      "file": "07-allotment.board.json",
+      "pid": "c37adfb45fd5",
+      "categories": 3,
+      "items": 4
+    },
+    {
+      "file": "08-ferry.board.json",
+      "pid": "19304b56f314",
+      "categories": 3,
+      "items": 5
+    },
+    {
+      "file": "10-balloon.board.json",
+      "pid": "b44a026ec09b",
+      "categories": 4,
+      "items": 4
+    },
+    {
+      "file": "14-tea.board.json",
+      "pid": "3e67e3a21be0",
+      "categories": 4,
+      "items": 5
+    },
+    {
+      "file": "24-ferry.board.json",
+      "pid": "e45cb743da43",
+      "categories": 5,
+      "items": 5
+    },
+    {
+      "file": "43-cheese.board.json",
+      "pid": "b1ba6858a21b",
+      "categories": 5,
+      "items": 6
+    }
+  ]
+}
