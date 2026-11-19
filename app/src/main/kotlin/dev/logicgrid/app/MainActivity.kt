@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -92,6 +93,7 @@ fun SolveScreen(puzzle: Puzzle) {
                 closure = model.closure,
                 selected = selected,
                 geometry = model.geometry,
+                rotatedHeaders = model.rotatedHeaders,
                 onTransform = { zoom, pan -> model.onTransform(zoom, pan, viewport) },
                 onCellTap = { model.select(it) },
                 onHeaderTap = { hit ->
@@ -149,7 +151,10 @@ fun SolveScreen(puzzle: Puzzle) {
         // correction is zoom in, re-tap, zoom out. Also gives keyboard and
         // switch access a route in.
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             OutlinedButton({ model.nudge(0, -1) }, Modifier.testTag("left")) { Text("←") }
@@ -157,7 +162,10 @@ fun SolveScreen(puzzle: Puzzle) {
             OutlinedButton({ model.nudge(-1, 0) }, Modifier.testTag("up")) { Text("↑") }
             OutlinedButton({ model.nudge(1, 0) }, Modifier.testTag("down")) { Text("↓") }
             OutlinedButton({ model.toggleAssist() }, Modifier.testTag("assist")) {
-                Text(if (model.assist) "Assist on" else "Assist off")
+                Text(if (model.assist) "Assist" else "No assist")
+            }
+            OutlinedButton({ model.toggleHeaderStyle() }, Modifier.testTag("headers")) {
+                Text(if (model.rotatedHeaders) "Turned" else "Short")
             }
         }
 

@@ -15,7 +15,7 @@ package dev.logicgrid.app
  */
 private val ARTICLES = listOf("the ", "a ", "an ")
 
-private fun stripArticle(item: String): String {
+internal fun stripArticle(item: String): String {
     val lower = item.lowercase()
     for (a in ARTICLES) if (lower.startsWith(a)) return item.substring(a.length)
     return item
@@ -50,3 +50,13 @@ fun shortLabels(items: List<String>, cap: Int = 10, floor: Int = 3): List<String
 /** Convenience for a single label where the sibling set is not to hand. */
 fun shortLabel(item: String, cap: Int = 10): String =
     stripArticle(item).take(cap).trim()
+
+/**
+ * The whole item name, less a leading article, for rotated headers where the
+ * vertical axis gives enough room to read one. Capped only to stop a very long
+ * name overrunning the header band.
+ */
+fun fullLabel(item: String, cap: Int = 20): String {
+    val base = stripArticle(item)
+    return if (base.length <= cap) base else base.take(cap - 1).trimEnd() + "…"
+}

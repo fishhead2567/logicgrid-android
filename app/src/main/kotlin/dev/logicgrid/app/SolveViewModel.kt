@@ -48,10 +48,34 @@ class SolveViewModel(val puzzle: Puzzle) : ViewModel() {
     var answer: Map<String, List<String?>> by mutableStateOf(emptyMap())
         private set
 
-    var geometry: GridGeometry by mutableStateOf(
-        GridGeometry(puzzle.schema, cellPx = 40f, gutterPx = 96f, headerPx = 72f)
-    )
+    /**
+     * Upright prefixes, or whole names turned a quarter turn as a printed
+     * chart has them. Rotating buys vertical room for the label at the cost of
+     * a much taller header band, so the two modes need different margins --
+     * which is why this rebuilds the geometry rather than setting a flag on it.
+     */
+    var rotatedHeaders: Boolean by mutableStateOf(false)
         private set
+
+    var geometry: GridGeometry by mutableStateOf(geometryFor(false))
+        private set
+
+    private fun geometryFor(rotated: Boolean, zoom: Float = 1f, pan: Pt = Pt(0f, 0f)) =
+        GridGeometry(
+            puzzle.schema,
+            cellPx = 40f,
+            gutterPx = if (rotated) 150f else 96f,
+            headerPx = if (rotated) 165f else 72f,
+            zoom = zoom,
+            pan = pan,
+        )
+
+    fun toggleHeaderStyle() {
+        rotatedHeaders = !rotatedHeaders
+        // Pan is in pixels from a corner that just moved, so carrying it over
+        // would shift the chart by the difference in margins. Start at rest.
+        geometry = geometryFor(rotatedHeaders, zoom = geometry.zoom)
+    }
 
     enum class Outcome { Playing, Solved, Wrong }
 

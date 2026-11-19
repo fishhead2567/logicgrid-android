@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -67,6 +68,7 @@ fun CompositeGrid(
     closure: Closure,
     selected: GridCell?,
     geometry: GridGeometry,
+    rotatedHeaders: Boolean,
     onTransform: (zoom: Float, pan: Pt) -> Unit,
     onCellTap: (GridCell) -> Unit,
     onHeaderTap: (GridHit) -> Unit,
@@ -82,8 +84,14 @@ fun CompositeGrid(
     // shortLabel() alone just truncates, which collides badly at 40px cells:
     // "Ifeoma"/"Blaise"/"Tansy"/"Kipling" all overlap, whereas the
     // distinguishing prefixes are three characters each.
-    val labels: Map<String, List<String>> = remember(puzzle.pid) {
-        puzzle.schema.categories.associate { it.name to shortLabels(it.items) }
+    val labels: Map<String, List<String>> = remember(puzzle.pid, rotatedHeaders) {
+        puzzle.schema.categories.associate { cat ->
+            // Rotated headers run along the vertical axis, where there is room
+            // for the whole name; upright ones have a 40px cell and must fall
+            // back to the shortest prefix that stays unambiguous.
+            cat.name to if (rotatedHeaders) cat.items.map { fullLabel(it) }
+                        else shortLabels(cat.items)
+        }
     }
 
     Box(
@@ -113,7 +121,7 @@ fun CompositeGrid(
     ) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             val g = current.value
-            drawChart(g, puzzle, closure, selected, measurer, labelStyle, markStyle, cache, labels)
+            drawChart(g, puzzle, closure, selected, measurer, labelStyle, markStyle, cache, labels, rotatedHeaders)
         }
     }
 }
@@ -128,6 +136,7 @@ private fun DrawScope.drawChart(
     markStyle: TextStyle,
     cache: HashMap<String, TextLayoutResult>,
     labels: Map<String, List<String>>,
+    rotatedHeaders: Boolean,
 ) {
     fun labelFor(ref: Ref): String {
         val cat = g.schema.category(ref.cat)
@@ -237,12 +246,25 @@ private fun DrawScope.drawChart(
         val rect = g.colHeaderRect(col)
         if (rect.right < g.scaledGutter || rect.left > size.width) continue
         val l = layout(labelFor(g.colRef(col)), labelStyle)
-        drawText(
-            l,
-            topLeft = Offset(
-                rect.centre.x - l.size.width / 2f,
-                g.scaledHeader - l.size.height - 2f,
-            ),
-        )
+        if (!rotatedHeaders) {
+            drawText(
+                l,
+                topLeft = Offset(
+                    rect.centre.x - l.size.width / 2f,
+                    g.scaledHeader - l.size.height - 2f,
+                ),
+            )
+        } else {
+            // A quarter turn anticlockwise about the anchor. Rotating by -90
+            // sends an offset (dx, dy) from the pivot to (dy, -dx), so text
+            // laid out rightwards ends up running upwards from the anchor and
+            // its height becomes its horizontal extent -- hence the half-height
+            // shift, which is what centres it over the column.
+            val h = l.size.height.toFloat()
+            val anchor = Offset(rect.centre.x - h / 2f, g.scaledHeader - 5f)
+            rotate(degrees = -90f, pivot = anchor) {
+                drawText(l, topLeft = anchor)
+            }
+        }
     }
 }
