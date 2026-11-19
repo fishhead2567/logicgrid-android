@@ -58,7 +58,7 @@ class GridGeometryTest {
                                 // tapping a header should never mark a cell.
                                 // Those cells are covered by the occlusion test
                                 // below; here we only round-trip visible ones.
-                                if (centre.x < g.scaledGutter || centre.y < g.scaledHeader) {
+                                if (centre.x < g.gutterWidth || centre.y < g.headerHeight) {
                                     continue
                                 }
                                 val hit = g.hitTest(centre)
@@ -194,7 +194,7 @@ class GridGeometryTest {
         val (_, schema) = schemas().first()
         val g = geometry(schema, 1f, Pt(-200f, -200f))
         // Just inside the content area but left/above the first visible cell.
-        val justBefore = Pt(g.scaledGutter + 1f, g.scaledHeader + 1f)
+        val justBefore = Pt(g.gutterWidth + 1f, g.headerHeight + 1f)
         val hit = g.hitTest(justBefore)
         assertTrue(
             hit != GridHit.CellHit(GridCell(0, 0)),
@@ -220,8 +220,8 @@ class GridGeometryTest {
                     for (col in 0 until g.cols) {
                         if (!g.isUsable(row, col)) continue
                         val centre = g.cellRect(row, col).centre
-                        val underGutter = centre.x < g.scaledGutter
-                        val underHeader = centre.y < g.scaledHeader
+                        val underGutter = centre.x < g.gutterWidth
+                        val underHeader = centre.y < g.headerHeight
                         if (!underGutter && !underHeader) continue
                         occluded++
                         val hit = g.hitTest(centre)
@@ -245,7 +245,7 @@ class GridGeometryTest {
         // Panning far left/up stops at the content edge.
         val far = g.clampPan(Pt(-99999f, -99999f), viewport)
         val content = g.contentSize()
-        val minX = (viewport.width - g.scaledGutter) - (content.width - g.scaledGutter)
+        val minX = (viewport.width - g.gutterWidth) - (content.width - g.gutterWidth)
         assertEquals(minOf(minX, 0f), far.x, 0.01f)
         assertTrue(far.x <= 0f && far.y <= 0f)
     }
@@ -359,8 +359,8 @@ class PanToRevealTest {
     /** Is the cell wholly inside the region cells are actually drawn in? */
     private fun visible(g: GridGeometry, cell: GridCell, viewport: Size): Boolean {
         val r = g.cellRect(cell.row, cell.col)
-        return r.left >= g.scaledGutter - 0.01f && r.right <= viewport.width + 0.01f &&
-            r.top >= g.scaledHeader - 0.01f && r.bottom <= viewport.height + 0.01f
+        return r.left >= g.gutterWidth - 0.01f && r.right <= viewport.width + 0.01f &&
+            r.top >= g.headerHeight - 0.01f && r.bottom <= viewport.height + 0.01f
     }
 
     @Test
@@ -412,7 +412,7 @@ class PanToRevealTest {
         val huge = g.withZoom(40f)
         val moved = huge.withPan(huge.panToReveal(GridCell(3, 3), phone))
         val r = moved.cellRect(3, 3)
-        assertEquals(moved.scaledGutter, r.left, 0.5f)
+        assertEquals(moved.gutterWidth, r.left, 0.5f)
     }
 
     @Test
@@ -423,8 +423,70 @@ class PanToRevealTest {
         for (cell in listOf(GridCell(0, 0), GridCell(19, 19), GridCell(0, 19))) {
             val moved = g.withPan(g.panToReveal(cell, phone))
             val r = moved.cellRect(cell.row, cell.col)
-            assertTrue(r.left >= moved.scaledGutter - 0.01f, "under the row labels: $cell")
-            assertTrue(r.top >= moved.scaledHeader - 0.01f, "under the column labels: $cell")
+            assertTrue(r.left >= moved.gutterWidth - 0.01f, "under the row labels: $cell")
+            assertTrue(r.top >= moved.headerHeight - 0.01f, "under the column labels: $cell")
         }
+    }
+}
+
+/**
+ * The label bands hold text of a fixed point size, so they are a fixed cost.
+ *
+ * They used to scale with zoom, which meant a band sized for 9sp text became
+ * three times taller than its text at 3x. The chart was pushed down and right
+ * by a margin full of nothing -- about three quarters of the pane on a
+ * turned-label chart -- and its top-left corner moved every time the zoom
+ * changed.
+ */
+class BandsDoNotScaleTest {
+    private fun geometry(zoom: Float, gutter: Float = 190f, header: Float = 165f): GridGeometry {
+        val cats = (0 until 5).map { c ->
+            Category("cat$c", "Cat $c", (0 until 5).map { "c$c-i$it" })
+        }
+        return GridGeometry(
+            Schema(cats, spineName = cats.first().name),
+            cellPx = 40f, gutterPx = gutter, headerPx = header, zoom = zoom,
+        )
+    }
+
+    @Test
+    fun `the bands are the same size at every zoom`() {
+        for (zoom in listOf(0.25f, 0.5f, 1f, 2f, 3f, 4f)) {
+            val g = geometry(zoom)
+            assertEquals(190f, g.gutterWidth, 0.01f, "gutter at ${zoom}x")
+            assertEquals(165f, g.headerHeight, 0.01f, "header at ${zoom}x")
+        }
+    }
+
+    @Test
+    fun `the first cell sits at the same corner at every zoom`() {
+        for (zoom in listOf(0.25f, 1f, 2.5f, 4f)) {
+            val r = geometry(zoom).cellRect(0, 0)
+            assertEquals(190f, r.left, 0.01f, "chart drifts horizontally at ${zoom}x")
+            assertEquals(165f, r.top, 0.01f, "chart drifts vertically at ${zoom}x")
+        }
+    }
+
+    @Test
+    fun `zooming in strictly increases how much of the chart is cells`() {
+        val viewport = Size(1080f, 630f)
+        fun cellFraction(zoom: Float): Float {
+            val g = geometry(zoom)
+            val cellArea = (viewport.width - g.gutterWidth) * (viewport.height - g.headerHeight)
+            return cellArea / (viewport.width * viewport.height)
+        }
+        // Constant bands mean the cells' share of the pane never shrinks as
+        // the player zooms in, which was the whole complaint.
+        assertEquals(cellFraction(1f), cellFraction(4f), 0.0001f)
+    }
+
+    @Test
+    fun `fitting the width leaves the last column on screen`() {
+        val viewport = Size(1080f, 630f)
+        val g = geometry(1f)
+        val fitted = g.withZoom(g.zoomToFitWidth(viewport))
+        val last = fitted.cellRect(0, fitted.cols - 1)
+        assertTrue(last.right <= viewport.width + 0.01f, "last column overflows: ${last.right}")
+        assertTrue(last.right > viewport.width - fitted.scaledCell, "wastes a column of room")
     }
 }

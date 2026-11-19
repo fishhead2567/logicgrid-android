@@ -278,6 +278,14 @@ private fun ViewMenu(model: SolveViewModel) {
             )
             HorizontalDivider()
             DropdownMenuItem(
+                // A pinch can leave the chart at a zoom that is hard to undo
+                // by pinching back. This is the way out, and on a wide chart
+                // it is also the most useful starting view.
+                text = { Text("Fit width") },
+                onClick = { model.fitWidth(); open = false },
+                modifier = Modifier.testTag("menuFit"),
+            )
+            DropdownMenuItem(
                 text = { Text("Reset this puzzle") },
                 onClick = { model.reset(); open = false },
                 modifier = Modifier.testTag("menuReset"),

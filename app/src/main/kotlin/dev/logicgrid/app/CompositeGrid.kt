@@ -168,13 +168,13 @@ private fun DrawScope.drawChart(
         val r = g.cellRect(selected.row, 0)
         drawRect(
             selectColour,
-            topLeft = Offset(g.scaledGutter, r.top),
+            topLeft = Offset(g.gutterWidth, r.top),
             size = androidx.compose.ui.geometry.Size(g.cols * g.scaledCell, g.scaledCell),
         )
         val c = g.cellRect(0, selected.col)
         drawRect(
             selectColour,
-            topLeft = Offset(c.left, g.scaledHeader),
+            topLeft = Offset(c.left, g.headerHeight),
             size = androidx.compose.ui.geometry.Size(g.scaledCell, g.rows * g.scaledCell),
         )
     }
@@ -182,7 +182,7 @@ private fun DrawScope.drawChart(
     for (row in 0 until g.rows) {
         for (col in 0 until g.cols) {
             val rect = g.cellRect(row, col)
-            if (rect.right < g.scaledGutter || rect.bottom < g.scaledHeader) continue
+            if (rect.right < g.gutterWidth || rect.bottom < g.headerHeight) continue
             if (rect.left > size.width || rect.top > size.height) continue
 
             if (!g.isUsable(row, col)) {
@@ -222,13 +222,13 @@ private fun DrawScope.drawChart(
     val lastX = minOf(content.width + g.pan.x, size.width)
     val lastY = minOf(content.height + g.pan.y, size.height)
     for (b in 0..g.rowCategories.size) {
-        val y = g.scaledHeader + b * g.items * g.scaledCell + g.pan.y
-        if (y < g.scaledHeader - 1f || y > size.height) continue
+        val y = g.headerHeight + b * g.items * g.scaledCell + g.pan.y
+        if (y < g.headerHeight - 1f || y > size.height) continue
         drawLine(blockColour, Offset(0f, y), Offset(lastX, y), strokeWidth = 2f)
     }
     for (b in 0..g.colCategories.size) {
-        val x = g.scaledGutter + b * g.items * g.scaledCell + g.pan.x
-        if (x < g.scaledGutter - 1f || x > size.width) continue
+        val x = g.gutterWidth + b * g.items * g.scaledCell + g.pan.x
+        if (x < g.gutterWidth - 1f || x > size.width) continue
         drawLine(blockColour, Offset(x, 0f), Offset(x, lastY), strokeWidth = 2f)
     }
 
@@ -237,17 +237,17 @@ private fun DrawScope.drawChart(
     drawRect(
         Color.White,
         topLeft = Offset(0f, 0f),
-        size = androidx.compose.ui.geometry.Size(g.scaledGutter, size.height),
+        size = androidx.compose.ui.geometry.Size(g.gutterWidth, size.height),
     )
     drawRect(
         Color.White,
         topLeft = Offset(0f, 0f),
-        size = androidx.compose.ui.geometry.Size(size.width, g.scaledHeader),
+        size = androidx.compose.ui.geometry.Size(size.width, g.headerHeight),
     )
 
     for (row in 0 until g.rows) {
         val rect = g.rowHeaderRect(row)
-        if (rect.bottom < g.scaledHeader || rect.top > size.height) continue
+        if (rect.bottom < g.headerHeight || rect.top > size.height) continue
         val l = layout(labelFor(g.rowRef(row)), labelStyle)
         // Right-aligned against the gutter edge, so a label always sits
         // against the grid it labels. Left-aligning looks fine at 1x and then
@@ -255,19 +255,19 @@ private fun DrawScope.drawChart(
         // the text and the first cell grows with every pinch, until the label
         // is reading at nothing. Clamped so a label wider than the gutter
         // spills right, over the dead corner, rather than off-screen left.
-        val x = maxOf(2f, g.scaledGutter - l.size.width - 6f)
+        val x = maxOf(2f, g.gutterWidth - l.size.width - 6f)
         drawText(l, topLeft = Offset(x, rect.centre.y - l.size.height / 2f))
     }
     for (col in 0 until g.cols) {
         val rect = g.colHeaderRect(col)
-        if (rect.right < g.scaledGutter || rect.left > size.width) continue
+        if (rect.right < g.gutterWidth || rect.left > size.width) continue
         val l = layout(labelFor(g.colRef(col)), labelStyle)
         if (!rotatedHeaders) {
             drawText(
                 l,
                 topLeft = Offset(
                     rect.centre.x - l.size.width / 2f,
-                    g.scaledHeader - l.size.height - 2f,
+                    g.headerHeight - l.size.height - 2f,
                 ),
             )
         } else {
@@ -277,7 +277,7 @@ private fun DrawScope.drawChart(
             // its height becomes its horizontal extent -- hence the half-height
             // shift, which is what centres it over the column.
             val h = l.size.height.toFloat()
-            val anchor = Offset(rect.centre.x - h / 2f, g.scaledHeader - 5f)
+            val anchor = Offset(rect.centre.x - h / 2f, g.headerHeight - 5f)
             rotate(degrees = -90f, pivot = anchor) {
                 drawText(l, topLeft = anchor)
             }

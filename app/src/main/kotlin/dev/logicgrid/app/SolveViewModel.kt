@@ -271,8 +271,12 @@ class SolveViewModel(
 
     fun fitWidth() {
         if (viewport.width <= 0f) return
-        val zoomed = geometry.withZoom(geometry.zoomToFitWidth(viewport))
+        // Bounded by the same limits the pinch uses, so this cannot reach a
+        // zoom the player could not have reached themselves.
+        val target = geometry.zoomToFitWidth(viewport).coerceIn(0.2f, 4f)
+        val zoomed = geometry.withZoom(target)
         geometry = zoomed.withPan(zoomed.clampPan(Pt(0f, 0f), viewport))
+        revealAfterLayout()
     }
 
     private fun recompute() {

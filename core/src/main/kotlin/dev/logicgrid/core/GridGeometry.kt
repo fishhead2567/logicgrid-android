@@ -87,13 +87,32 @@ class GridGeometry(
     val cols: Int = colCategories.size * items
 
     val scaledCell: Float get() = cellPx * zoom
-    val scaledGutter: Float get() = gutterPx * zoom
-    val scaledHeader: Float get() = headerPx * zoom
+
+    /**
+     * The label bands do **not** scale with zoom, and that asymmetry is the
+     * point.
+     *
+     * A band exists to hold label text, and the label text is a fixed point
+     * size -- it does not grow when the chart is zoomed. Scaling the band
+     * anyway means that at 3x a band sized for 9sp text becomes three times
+     * taller than the text it holds, so most of it is empty: the chart is
+     * shoved down and right by a margin full of nothing, and on a turned-label
+     * chart that margin swallowed about three quarters of the pane.
+     *
+     * Keeping them constant also means the chart is anchored at the same
+     * top-left corner at every zoom, so zooming magnifies the cells and
+     * nothing else moves.
+     *
+     * If the labels ever grow with zoom, these must grow with them again.
+     */
+    val gutterWidth: Float get() = gutterPx
+    val headerHeight: Float get() = headerPx
+
 
     /** Content size including the gutter and header band. */
     fun contentSize(): Size = Size(
-        width = scaledGutter + cols * scaledCell,
-        height = scaledHeader + rows * scaledCell,
+        width = gutterWidth + cols * scaledCell,
+        height = headerHeight + rows * scaledCell,
     )
 
     /**
@@ -129,38 +148,38 @@ class GridGeometry(
 
     /** Rect of a cell, in untransformed composable space. */
     fun cellRect(row: Int, col: Int): Rect {
-        val left = scaledGutter + col * scaledCell + pan.x
-        val top = scaledHeader + row * scaledCell + pan.y
+        val left = gutterWidth + col * scaledCell + pan.x
+        val top = headerHeight + row * scaledCell + pan.y
         return Rect(left, top, left + scaledCell, top + scaledCell)
     }
 
     /** Row labels track vertical pan only, so they stay pinned to the left. */
     fun rowHeaderRect(row: Int): Rect {
-        val top = scaledHeader + row * scaledCell + pan.y
-        return Rect(0f, top, scaledGutter, top + scaledCell)
+        val top = headerHeight + row * scaledCell + pan.y
+        return Rect(0f, top, gutterWidth, top + scaledCell)
     }
 
     /** Column labels track horizontal pan only. */
     fun colHeaderRect(col: Int): Rect {
-        val left = scaledGutter + col * scaledCell + pan.x
-        return Rect(left, 0f, left + scaledCell, scaledHeader)
+        val left = gutterWidth + col * scaledCell + pan.x
+        return Rect(left, 0f, left + scaledCell, headerHeight)
     }
 
     /** What is under [p]. Pointer coordinates must be untransformed. */
     fun hitTest(p: Pt): GridHit {
-        val inGutter = p.x < scaledGutter
-        val inHeader = p.y < scaledHeader
+        val inGutter = p.x < gutterWidth
+        val inHeader = p.y < headerHeight
         if (inGutter && inHeader) return GridHit.Dead
         if (inGutter) {
-            val row = ((p.y - scaledHeader - pan.y) / scaledCell).toIntFloor()
+            val row = ((p.y - headerHeight - pan.y) / scaledCell).toIntFloor()
             return if (row in 0 until rows) GridHit.RowHeader(row) else GridHit.Outside
         }
         if (inHeader) {
-            val col = ((p.x - scaledGutter - pan.x) / scaledCell).toIntFloor()
+            val col = ((p.x - gutterWidth - pan.x) / scaledCell).toIntFloor()
             return if (col in 0 until cols) GridHit.ColHeader(col) else GridHit.Outside
         }
-        val col = ((p.x - scaledGutter - pan.x) / scaledCell).toIntFloor()
-        val row = ((p.y - scaledHeader - pan.y) / scaledCell).toIntFloor()
+        val col = ((p.x - gutterWidth - pan.x) / scaledCell).toIntFloor()
+        val row = ((p.y - headerHeight - pan.y) / scaledCell).toIntFloor()
         if (row !in 0 until rows || col !in 0 until cols) return GridHit.Outside
         return if (isUsable(row, col)) GridHit.CellHit(GridCell(row, col)) else GridHit.Dead
     }
@@ -207,7 +226,7 @@ class GridGeometry(
      * The visible region for *cells* is not the whole viewport. The gutter and
      * the header are painted over the top of it, so a cell nudged under them
      * is occluded -- and [hitTest] already agrees it is not there. The target
-     * region therefore starts at [scaledGutter] and [scaledHeader], not at
+     * region therefore starts at [gutterWidth] and [headerHeight], not at
      * zero, or the first column would slide under the row labels and look
      * lost.
      *
@@ -231,18 +250,18 @@ class GridGeometry(
         }
 
         val wanted = Pt(
-            x = adjust(rect.left, rect.right, scaledGutter, viewport.width, pan.x),
-            y = adjust(rect.top, rect.bottom, scaledHeader, viewport.height, pan.y),
+            x = adjust(rect.left, rect.right, gutterWidth, viewport.width, pan.x),
+            y = adjust(rect.top, rect.bottom, headerHeight, viewport.height, pan.y),
         )
         return clampPan(wanted, viewport)
     }
 
     fun clampPan(candidate: Pt, viewport: Size): Pt {
         val content = contentSize()
-        val spanX = content.width - scaledGutter
-        val spanY = content.height - scaledHeader
-        val visibleX = viewport.width - scaledGutter
-        val visibleY = viewport.height - scaledHeader
+        val spanX = content.width - gutterWidth
+        val spanY = content.height - headerHeight
+        val visibleX = viewport.width - gutterWidth
+        val visibleY = viewport.height - headerHeight
         // When the content is smaller than the viewport, pin it rather than
         // letting it drift.
         val minX = if (spanX <= visibleX) 0f else visibleX - spanX
@@ -259,8 +278,19 @@ class GridGeometry(
      * The gutter counts: it is content, not chrome, so fitting only the cells
      * leaves the chart about a gutter too wide.
      */
-    fun zoomToFitWidth(viewport: Size): Float =
-        viewport.width / (gutterPx + cols * cellPx)
+    /**
+     * The zoom at which every column fits across the viewport.
+     *
+     * The gutter is a fixed cost now, so it comes off the top rather than
+     * being divided through: only the cells scale. Dividing the whole width
+     * including the gutter -- which was right when the band scaled too --
+     * now over-zooms and pushes the last column off the edge.
+     */
+    fun zoomToFitWidth(viewport: Size): Float {
+        val forCells = viewport.width - gutterWidth
+        if (forCells <= 0f || cols == 0) return zoom
+        return forCells / (cols * cellPx)
+    }
 
     fun withZoom(newZoom: Float): GridGeometry =
         GridGeometry(schema, cellPx, gutterPx, headerPx, newZoom, pan)
