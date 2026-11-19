@@ -3,15 +3,16 @@ package dev.logicgrid.app
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -19,59 +20,116 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.logicgrid.core.GridHit
+import dev.logicgrid.core.LibraryEntry
+import dev.logicgrid.core.ManifestJson
 import dev.logicgrid.core.Puzzle
 import dev.logicgrid.core.PuzzleJson
 import dev.logicgrid.core.Size as CoreSize
 
 /** Reads the content bundled in assets. The network is never on this path. */
 object AssetContent {
-    fun puzzleIds(context: Context): List<String> =
-        context.assets.list("content/puzzles")!!.sorted().map { it.removeSuffix(".json") }
+    fun library(context: Context): List<LibraryEntry> =
+        context.assets.open("content/manifest.json").use {
+            ManifestJson.parse(it.readBytes().decodeToString())
+        }
 
-    fun puzzle(context: Context, id: String): Puzzle =
-        context.assets.open("content/puzzles/$id.json").use { stream ->
-            PuzzleJson.parse(stream.readBytes().decodeToString())
+    fun puzzle(context: Context, entry: LibraryEntry): Puzzle =
+        context.assets.open("content/${entry.path}").use {
+            PuzzleJson.parse(it.readBytes().decodeToString())
         }
 }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val ids = AssetContent.puzzleIds(this)
-        val puzzle = AssetContent.puzzle(this, ids.first())
         setContent {
             MaterialTheme {
-                Surface(Modifier.fillMaxSize()) { SolveScreen(puzzle) }
+                Surface(Modifier.fillMaxSize()) { AppRoot() }
             }
         }
     }
 }
 
 @Composable
-fun SolveScreen(puzzle: Puzzle) {
-    val model = remember(puzzle.pid) { SolveViewModel(puzzle) }
-    var viewport by remember { mutableStateOf(CoreSize(1000f, 1600f)) }
+fun AppRoot() {
+    val context = LocalContext.current
+    val store = remember { PrefsProgressStore(context) }
+    val library = remember { AssetContent.library(context) }
+
+    // Which puzzle is open, or null for the menu. rememberSaveable so a
+    // rotation or a process death returns to the same puzzle rather than
+    // dumping the player back at the top of a fifty-row list.
+    var openPid: String? by rememberSaveable { mutableStateOf(null) }
+
+    // Bumped whenever a puzzle is left, to re-read progress for the menu.
+    // SharedPreferences is not observable, so without this the ticks would
+    // only ever update on a cold start.
+    var revision by remember { mutableStateOf(0) }
+
+    val entry = library.firstOrNull { it.pid == openPid }
+    if (entry == null) {
+        val solved = remember(revision) { store.solvedPids() }
+        val started = remember(revision) { store.startedPids() }
+        MenuScreen(
+            entries = library,
+            stateOf = {
+                when {
+                    it.pid in solved -> RowState.Solved
+                    it.pid in started -> RowState.InProgress
+                    else -> RowState.Untouched
+                }
+            },
+            onOpen = { openPid = it.pid },
+        )
+    } else {
+        val puzzle = remember(entry.pid) { AssetContent.puzzle(context, entry) }
+        val leave = {
+            revision++
+            openPid = null
+        }
+        // System back leaves the puzzle, not the app. Marks are already on
+        // disk by this point, so leaving never loses anything.
+        BackHandler(enabled = true, onBack = leave)
+        SolveScreen(puzzle, store, onExit = leave)
+    }
+}
+
+@Composable
+fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
+    val model = remember(puzzle.pid) { SolveViewModel(puzzle, store) }
+    val viewport = remember { CoreSize(1000f, 1600f) }
     val selected = model.selected
 
     Column(Modifier.fillMaxSize()) {
-        Text(
-            puzzle.title,
-            Modifier.padding(12.dp, 10.dp, 12.dp, 2.dp).testTag("title"),
-            style = MaterialTheme.typography.titleMedium,
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(4.dp, 6.dp, 12.dp, 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onExit, modifier = Modifier.testTag("exit")) {
+                Text("‹  Menu")
+            }
+            Text(
+                puzzle.title,
+                Modifier.weight(1f).testTag("title"),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+            )
+        }
         Text(
             "${puzzle.profile} ${puzzle.rating}/7 — " +
                 "${puzzle.categoryCount}x${puzzle.size} — " +
@@ -80,7 +138,6 @@ fun SolveScreen(puzzle: Puzzle) {
             style = MaterialTheme.typography.bodySmall,
         )
 
-        // The chart.
         androidx.compose.foundation.layout.Box(
             Modifier
                 .weight(1f)
@@ -96,23 +153,13 @@ fun SolveScreen(puzzle: Puzzle) {
                 rotatedHeaders = model.rotatedHeaders,
                 onTransform = { zoom, pan -> model.onTransform(zoom, pan, viewport) },
                 onCellTap = { model.select(it) },
-                onHeaderTap = { hit ->
-                    // Tapping a label is a navigation aid, not a mark.
-                    when (hit) {
-                        is GridHit.RowHeader -> model.nudge(0, 0)
-                        is GridHit.ColHeader -> model.nudge(0, 0)
-                        else -> {}
-                    }
-                },
+                onHeaderTap = { },
             )
         }
 
-        // Status line: always names the exact cell, which is what lets the
-        // chart's own cells stay small enough to fit.
         val g = model.geometry
         val where = selected?.let { cell ->
-            val mark = model.markAt(cell)
-            val state = when (mark) {
+            val state = when (model.markAt(cell)) {
                 true -> "marked O (together)"
                 false -> "marked x (apart)"
                 null -> "unmarked"
@@ -130,15 +177,16 @@ fun SolveScreen(puzzle: Puzzle) {
         )
 
         when (model.outcome) {
-            SolveViewModel.Outcome.Solved -> Banner("SOLVED — every placing correct.", Color(0xFF1B7F3B))
-            SolveViewModel.Outcome.Wrong ->
-                Banner("Not quite — the sheet is full but ${model.mistakes().size} mark(s) are wrong.", Color(0xFFB3261E))
+            SolveViewModel.Outcome.Solved -> SolvedBanner(onExit)
+            SolveViewModel.Outcome.Wrong -> Banner(
+                "Not quite — the sheet is full but ${model.mistakes().size} mark(s) are wrong.",
+                Color(0xFFB3261E),
+            )
             SolveViewModel.Outcome.Playing -> {}
         }
 
-        // Marking acts on the selection, so it works at any zoom.
         Row(
-            Modifier.fillMaxWidth().padding(8.dp),
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -147,9 +195,6 @@ fun SolveScreen(puzzle: Puzzle) {
             OutlinedButton({ model.clearSelected() }, Modifier.testTag("clear")) { Text("Clear") }
             OutlinedButton({ model.undo() }, Modifier.testTag("undo")) { Text("Undo") }
         }
-        // Nudge: at small zoom a mis-tap is common, and without this the only
-        // correction is zoom in, re-tap, zoom out. Also gives keyboard and
-        // switch access a route in.
         Row(
             Modifier
                 .fillMaxWidth()
@@ -169,12 +214,8 @@ fun SolveScreen(puzzle: Puzzle) {
             }
         }
 
-        // The answer sheet is the deliverable of the puzzle, so it stays
-        // visible rather than being reduced to "n/m placed".
         AnswerSheet(puzzle, model.answer)
 
-        // Clue text: pre-rendered by the generator, so nothing here has to
-        // reimplement English.
         puzzle.text?.let { text ->
             Column(
                 Modifier
@@ -193,6 +234,28 @@ fun SolveScreen(puzzle: Puzzle) {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Solving is the one moment the player is certainly finished, so it is the one
+ * moment worth offering the way out directly.
+ */
+@Composable
+private fun SolvedBanner(onExit: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().background(Color(0xFF1B7F3B)).padding(12.dp, 4.dp).testTag("banner"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "SOLVED — every placing correct.",
+            Modifier.weight(1f),
+            color = Color.White,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        TextButton(onClick = onExit, modifier = Modifier.testTag("exitSolved")) {
+            Text("Next puzzle", color = Color.White)
         }
     }
 }

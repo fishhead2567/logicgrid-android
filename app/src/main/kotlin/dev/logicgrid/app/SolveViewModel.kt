@@ -15,6 +15,7 @@ import dev.logicgrid.core.GridGeometry
 import dev.logicgrid.core.MarkResult
 import dev.logicgrid.core.Pt
 import dev.logicgrid.core.Puzzle
+import dev.logicgrid.core.PuzzleProgress
 import dev.logicgrid.core.Size as CoreSize
 
 /**
@@ -24,7 +25,10 @@ import dev.logicgrid.core.Size as CoreSize
  * `:core`'s [Board] is immutable, so this holds a *stack* of states: undo is
  * popping one, and there is no mutation to miss.
  */
-class SolveViewModel(val puzzle: Puzzle) : ViewModel() {
+class SolveViewModel(
+    val puzzle: Puzzle,
+    private val store: ProgressStore = InMemoryProgressStore(),
+) : ViewModel() {
 
     private val history = ArrayDeque<BoardState>()
 
@@ -64,7 +68,7 @@ class SolveViewModel(val puzzle: Puzzle) : ViewModel() {
         GridGeometry(
             puzzle.schema,
             cellPx = 40f,
-            gutterPx = if (rotated) 150f else 96f,
+            gutterPx = if (rotated) 190f else 96f,
             headerPx = if (rotated) 165f else 72f,
             zoom = zoom,
             pan = pan,
@@ -79,7 +83,30 @@ class SolveViewModel(val puzzle: Puzzle) : ViewModel() {
 
     enum class Outcome { Playing, Solved, Wrong }
 
-    init { recompute() }
+    /**
+     * Sticky: solving is a fact about history. A player who finishes and then
+     * clears a cell to look at something has still solved the puzzle, and the
+     * menu should go on saying so.
+     */
+    var everSolved: Boolean = false
+        private set
+
+    init {
+        val saved = store.read(puzzle.pid)
+        everSolved = saved.solved
+        state = saved.toBoardState()
+        closure = when (val r = Board.closure(puzzle, state)) {
+            is ClosureResult.Ok -> r.closure
+            // A save that no longer fits its puzzle -- content changed under a
+            // stored board -- must not wedge the app on open. Drop the marks.
+            else -> { state = BoardState(); Closure(emptyMap()) }
+        }
+        recompute()
+    }
+
+    private fun persist() {
+        store.write(puzzle.pid, PuzzleProgress.of(state, everSolved))
+    }
 
     val assist: Boolean get() = state.assist
 
@@ -198,5 +225,7 @@ class SolveViewModel(val puzzle: Puzzle) : ViewModel() {
             Board.mistakes(puzzle, closure).isEmpty() -> Outcome.Solved
             else -> Outcome.Wrong
         }
+        if (outcome == Outcome.Solved) everSolved = true
+        persist()
     }
 }
