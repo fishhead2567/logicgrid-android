@@ -215,6 +215,21 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
             SolveViewModel.Outcome.Playing -> {}
         }
 
+        // Below the outcome, not instead of it. A solved board can still be
+        // checked, and a full-but-wrong one says both things without either
+        // contradicting the other.
+        when (model.checked) {
+            SolveViewModel.Checked.Clean -> Banner(
+                "No mistakes so far — everything you have placed is right.",
+                Color(0xFF1B7F3B),
+            )
+            SolveViewModel.Checked.Wrong -> Banner(
+                "Something is wrong — one of your marks contradicts the answer.",
+                Color(0xFFB3261E),
+            )
+            null -> {}
+        }
+
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -290,6 +305,14 @@ private fun ViewMenu(model: SolveViewModel) {
                 modifier = Modifier.testTag("menuHeaders"),
             )
             HorizontalDivider()
+            DropdownMenuItem(
+                // Not "Check answer": it does not show one. It says whether
+                // what you have can still be right, which is the help the
+                // back of a puzzle magazine gives you.
+                text = { Text("Check my work") },
+                onClick = { model.check(); open = false },
+                modifier = Modifier.testTag("menuCheck"),
+            )
             DropdownMenuItem(
                 // A pinch can leave the chart at a zoom that is hard to undo
                 // by pinching back. This is the way out, and on a wide chart

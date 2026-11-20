@@ -17,8 +17,9 @@ is no release, no Play listing, and no signing config in this repo.
 
 What works today: the library screen, the composite grid with pan/zoom and
 sticky headers on both axes, selection with O/X/clear, forced elimination,
-opt-in assist, mistake checking, progress that survives the process being
-killed, and content updates fetched in the background.
+opt-in assist, a check that says whether you have gone wrong without saying
+where, progress that survives the process being killed, and content updates
+fetched in the background.
 
 Not built yet: the settings screen; a way to reveal the answer
 (`SolveViewModel` has `revealSolution()`, but nothing in the UI calls it); and
@@ -93,6 +94,14 @@ Two levels of inference, deliberately separated:
 - **assist, opt-in** — transitivity (A=B and B=C, so A=C) and
   last-cell-standing. Those *are* deductions, so doing them unasked would be
   solving the puzzle for you.
+
+**Check my work** is the same line drawn again. It answers one question — can
+what you have still be right? — and nothing else. Not how many marks are wrong,
+because a player told "one" knows it was recent; not which, because that hands
+over that much of the answer. It is what the back of a puzzle magazine gives
+you: your grid is not the answer, so go back to the clue you trust most. The
+verdict is cleared by the next mark or undo, since a stale "no mistakes so far"
+is worse than no check at all.
 
 ### The port is proved against the Python, not against my reading of it
 

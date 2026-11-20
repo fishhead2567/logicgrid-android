@@ -46,6 +46,33 @@ class SolveViewModel(
     var conflict: ConflictReason? by mutableStateOf(null)
         private set
 
+    /**
+     * The result of the last explicit check, or null if the board has changed
+     * since.
+     *
+     * Deliberately only two values. "You have gone wrong somewhere" is the
+     * help a printed logic problem gives you: you glance at the answers, see
+     * that yours is not it, and start again from the clue you trust most. A
+     * count would narrow the search -- only one wrong means it was recent --
+     * and naming the cell would solve that much of the puzzle outright.
+     */
+    var checked: Checked? by mutableStateOf(null)
+        private set
+
+    enum class Checked { Clean, Wrong }
+
+    /**
+     * Does the board contradict the answer anywhere?
+     *
+     * Over the closure rather than the player's own marks, and that is the
+     * point: forced elimination follows from a circle, so a circle in the
+     * wrong place is caught by the X's it produced, before the circle itself
+     * clashes with anything.
+     */
+    fun check() {
+        checked = if (Board.mistakes(puzzle, closure).isEmpty()) Checked.Clean else Checked.Wrong
+    }
+
     var outcome: Outcome by mutableStateOf(Outcome.Playing)
         private set
 
@@ -280,6 +307,10 @@ class SolveViewModel(
     }
 
     private fun recompute() {
+        // Any edit at all invalidates the last check, including an undo.
+        // Leaving a stale "no mistakes so far" on screen after a new mark
+        // would be the one thing worse than not having a check button.
+        checked = null
         answer = Board.answer(puzzle, closure)
         outcome = when {
             !Board.answerComplete(answer) -> Outcome.Playing
