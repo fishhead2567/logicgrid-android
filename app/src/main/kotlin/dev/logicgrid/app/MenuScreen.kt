@@ -47,6 +47,7 @@ fun MenuScreen(
     onAcknowledge: () -> Unit = {},
     onDismiss: () -> Unit = {},
 ) {
+    val chart = LocalChart.current
     val solved = entries.count { stateOf(it) == RowState.Solved }
     Column(modifier.fillMaxSize()) {
         Column(Modifier.padding(16.dp, 14.dp, 16.dp, 8.dp)) {
@@ -58,7 +59,7 @@ fun MenuScreen(
                 "$solved of ${entries.size} solved" +
                     if (solvedEver > solved) "  ·  $solvedEver all time" else "",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF666666),
+                color = chart.dim,
                 modifier = Modifier.testTag("menuSummary"),
             )
         }
@@ -67,7 +68,7 @@ fun MenuScreen(
         LazyColumn(Modifier.fillMaxSize().testTag("menuList")) {
             items(entries, key = { it.pid }) { entry ->
                 PuzzleRow(entry, stateOf(entry)) { onOpen(entry) }
-                HorizontalDivider(color = Color(0xFFEEEEEE))
+                HorizontalDivider(color = chart.hairline)
             }
         }
     }
@@ -90,6 +91,7 @@ fun MenuScreen(
  */
 @Composable
 private fun Updating(sync: SyncUi.Working) {
+    val chart = LocalChart.current
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Updating puzzles") },
@@ -107,7 +109,7 @@ private fun Updating(sync: SyncUi.Working) {
                 Text(
                     "${sync.done} of ${sync.total} files",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF666666),
+                    color = chart.dim,
                 )
             }
         },
@@ -128,16 +130,17 @@ private fun Updating(sync: SyncUi.Working) {
  */
 @Composable
 private fun SyncNotice(sync: SyncUi, onDismiss: () -> Unit) {
+    val chart = LocalChart.current
     val (message, colour) = when (sync) {
-        is SyncUi.Checking -> "Checking for new puzzles…" to Color(0xFF888888)
+        is SyncUi.Checking -> "Checking for new puzzles…" to chart.dim
         // The blocking case has the dialog instead; this is the quiet one,
         // where nothing is at stake and the line is the whole of the news.
         is SyncUi.Working ->
             if (sync.blocking) return
-            else "Updating… ${sync.done} of ${sync.total}" to Color(0xFF888888)
+            else "Updating… ${sync.done} of ${sync.total}" to chart.dim
         is SyncUi.Updated -> {
             val lost = if (sync.lost > 0) " · ${sync.lost} replaced" else ""
-            "Updated — ${sync.puzzles} puzzles$lost" to Color(0xFF1B7F3B)
+            "Updated — ${sync.puzzles} puzzles$lost" to chart.bannerGood
         }
         else -> return
     }
@@ -194,6 +197,7 @@ private fun WipeWarning(sync: SyncUi.Warning, onAcknowledge: () -> Unit) {
 
 @Composable
 private fun PuzzleRow(entry: LibraryEntry, state: RowState, onClick: () -> Unit) {
+    val chart = LocalChart.current
     val label = when (state) {
         RowState.Solved -> "solved"
         RowState.InProgress -> "in progress"
@@ -217,13 +221,13 @@ private fun PuzzleRow(entry: LibraryEntry, state: RowState, onClick: () -> Unit)
                 entry.title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (state == RowState.Untouched) FontWeight.Normal else FontWeight.Medium,
-                color = if (state == RowState.Solved) Color(0xFF555555) else Color.Unspecified,
+                color = if (state == RowState.Solved) chart.dim else Color.Unspecified,
             )
             Text(
                 "${entry.profile} · ${entry.rating}/7 · ${entry.shape} · ${entry.clues} clues" +
                     if (entry.narrated) " · narrated" else "",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF777777),
+                color = chart.dim,
             )
         }
     }
@@ -235,10 +239,11 @@ private fun PuzzleRow(entry: LibraryEntry, state: RowState, onClick: () -> Unit)
  */
 @Composable
 private fun StatusGlyph(state: RowState) {
+    val chart = LocalChart.current
     val (glyph, colour) = when (state) {
-        RowState.Solved -> "✓" to Color(0xFF1B7F3B)
-        RowState.InProgress -> "···" to Color(0xFFB07400)
-        RowState.Untouched -> " " to Color(0xFFBBBBBB)
+        RowState.Solved -> "✓" to chart.bannerGood
+        RowState.InProgress -> "···" to chart.inProgress
+        RowState.Untouched -> " " to chart.untouched
     }
     Text(
         glyph,

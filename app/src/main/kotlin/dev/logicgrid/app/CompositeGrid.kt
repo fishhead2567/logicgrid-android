@@ -80,7 +80,10 @@ fun CompositeGrid(
     val current: State<GridGeometry> = rememberUpdatedState(geometry)
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val labelStyle = remember(density) { TextStyle(fontSize = 9.sp, color = Color(0xFF444444)) }
+    val chart = LocalChart.current
+    val labelStyle = remember(density, chart) {
+        TextStyle(fontSize = 9.sp, color = chart.label)
+    }
     val markStyle = remember(density) { TextStyle(fontSize = 12.sp) }
     val cache = remember { HashMap<String, TextLayoutResult>() }
     // Per category, the shortest prefixes that still tell its items apart.
@@ -133,7 +136,10 @@ fun CompositeGrid(
     ) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             val g = current.value
-            drawChart(g, puzzle, closure, selected, measurer, labelStyle, markStyle, cache, labels, rotatedHeaders)
+            drawChart(
+                g, puzzle, closure, selected, measurer, labelStyle, markStyle,
+                cache, labels, rotatedHeaders, chart,
+            )
         }
     }
 }
@@ -149,15 +155,18 @@ private fun DrawScope.drawChart(
     cache: HashMap<String, TextLayoutResult>,
     labels: Map<String, List<String>>,
     rotatedHeaders: Boolean,
+    // Passed in rather than read from the composition: a DrawScope extension
+    // is not a composable, so LocalChart is not reachable from in here.
+    chart: ChartColours,
 ) {
     fun labelFor(ref: Ref): String {
         val cat = g.schema.category(ref.cat)
         return labels[ref.cat]?.getOrNull(cat.index(ref.item)) ?: ref.item
     }
-    val lineColour = Color(0xFFBBBBBB)
-    val blockColour = Color(0xFF666666)
-    val deadColour = Color(0xFFEDEDED)
-    val selectColour = Color(0x332196F3)
+    val lineColour = chart.line
+    val blockColour = chart.block
+    val deadColour = chart.dead
+    val selectColour = chart.selection
 
     fun layout(text: String, style: TextStyle): TextLayoutResult =
         cache.getOrPut(text + style.fontSize) { measurer.measure(text, style) }
@@ -208,7 +217,7 @@ private fun DrawScope.drawChart(
             // screenshots both need the shape to carry the meaning.
             drawText(
                 l,
-                color = if (mark) Color(0xFF1B7F3B) else Color(0xFFB3261E),
+                color = if (mark) chart.yes else chart.no,
                 topLeft = Offset(
                     rect.centre.x - l.size.width / 2f,
                     rect.centre.y - l.size.height / 2f,
@@ -235,12 +244,12 @@ private fun DrawScope.drawChart(
     // Headers last, so they paint over any cell panned beneath them -- which is
     // what GridGeometry.hitTest already assumes.
     drawRect(
-        Color.White,
+        chart.paper,
         topLeft = Offset(0f, 0f),
         size = androidx.compose.ui.geometry.Size(g.gutterWidth, size.height),
     )
     drawRect(
-        Color.White,
+        chart.paper,
         topLeft = Offset(0f, 0f),
         size = androidx.compose.ui.geometry.Size(size.width, g.headerHeight),
     )

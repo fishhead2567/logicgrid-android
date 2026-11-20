@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.LogicGrid" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Light. values-night/themes.xml is the dark counterpart.
+         Two files rather than a DayNight parent because
+         android:Theme.Material.DayNight only exists from API 29 and minSdk
+         here is 26; resource qualifiers work on every level. -->
+    <style name="Theme.LogicGrid" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

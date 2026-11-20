@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            LogicGridTheme {
                 Surface(
                     Modifier
                         .fillMaxSize()
@@ -138,6 +138,7 @@ fun AppRoot() {
 
 @Composable
 fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
+    val chart = LocalChart.current
     val model = remember(puzzle.pid) { SolveViewModel(puzzle, store) }
     val selected = model.selected
 
@@ -171,7 +172,7 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(chart.paper)
                 .testTag("grid")
         ) {
             CompositeGrid(
@@ -200,7 +201,7 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
             where,
             Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF2F2F2))
+                .background(chart.statusStrip)
                 .padding(12.dp, 8.dp)
                 .testTag("status"),
             style = MaterialTheme.typography.bodySmall,
@@ -210,7 +211,7 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
             SolveViewModel.Outcome.Solved -> SolvedBanner(onExit)
             SolveViewModel.Outcome.Wrong -> Banner(
                 "Not quite — the sheet is full but ${model.mistakes().size} mark(s) are wrong.",
-                Color(0xFFB3261E),
+                chart.bannerBad,
             )
             SolveViewModel.Outcome.Playing -> {}
         }
@@ -221,11 +222,11 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
         when (model.checked) {
             SolveViewModel.Checked.Clean -> Banner(
                 "No mistakes so far — everything you have placed is right.",
-                Color(0xFF1B7F3B),
+                chart.bannerGood,
             )
             SolveViewModel.Checked.Wrong -> Banner(
                 "Something is wrong — one of your marks contradicts the answer.",
-                Color(0xFFB3261E),
+                chart.bannerBad,
             )
             null -> {}
         }
@@ -339,18 +340,19 @@ private fun check(on: Boolean): String = if (on) "✓  " else "    "
  */
 @Composable
 private fun SolvedBanner(onExit: () -> Unit) {
+    val chart = LocalChart.current
     Row(
-        Modifier.fillMaxWidth().background(Color(0xFF1B7F3B)).padding(12.dp, 4.dp).testTag("banner"),
+        Modifier.fillMaxWidth().background(chart.bannerGood).padding(12.dp, 4.dp).testTag("banner"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             "SOLVED — every placing correct.",
             Modifier.weight(1f),
-            color = Color.White,
+            color = chart.onBanner,
             style = MaterialTheme.typography.bodyMedium,
         )
         TextButton(onClick = onExit, modifier = Modifier.testTag("exitSolved")) {
-            Text("Next puzzle", color = Color.White)
+            Text("Next puzzle", color = chart.onBanner)
         }
     }
 }
@@ -360,7 +362,7 @@ private fun Banner(message: String, colour: Color) {
     Text(
         message,
         Modifier.fillMaxWidth().background(colour).padding(12.dp, 8.dp).testTag("banner"),
-        color = Color.White,
+        color = LocalChart.current.onBanner,
         style = MaterialTheme.typography.bodyMedium,
     )
 }
@@ -369,7 +371,7 @@ private fun Banner(message: String, colour: Color) {
 private fun AnswerSheet(puzzle: Puzzle, answer: Map<String, List<String?>>) {
     if (answer.isEmpty()) return
     Column(
-        Modifier.fillMaxWidth().background(Color(0xFFFAFAFA)).padding(8.dp).testTag("answer")
+        Modifier.fillMaxWidth().background(LocalChart.current.sheet).padding(8.dp).testTag("answer")
     ) {
         for (position in 0 until puzzle.size) {
             val row = puzzle.schema.categories.joinToString("  ") { cat ->

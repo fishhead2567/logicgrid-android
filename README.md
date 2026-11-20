@@ -21,6 +21,8 @@ opt-in assist, a check that says whether you have gone wrong without saying
 where, progress that survives the process being killed, and content updates
 fetched in the background.
 
+Dark mode follows the system, chart and all.
+
 Not built yet: the settings screen; a way to reveal the answer
 (`SolveViewModel` has `revealSolution()`, but nothing in the UI calls it); and
 narrative clue text — the manifest records which puzzles have a narration and
@@ -76,6 +78,32 @@ The split is not ceremony. The Python version put every bit of solving logic in
 a UI-agnostic `board.py`, and that is exactly why its terminal player was cheap
 to write and cheap to change. `:core` is the same bet: the rules of the game
 stay testable in seconds.
+
+## The palette is data, and the contrast is a test
+
+Material 3's `colorScheme` dresses the chrome, but a logic chart is drawn on a
+Canvas and the things it draws are not Material roles: "cell border", "category
+separator", "the unused half of the triangle", "the O", "the X". Those live in
+`ChartColours` in `Theme.kt`, named for what they draw, defined once per scheme
+and reached through a `CompositionLocal`.
+
+Dark is not light inverted. A chart is mostly empty space with thin strokes on
+it, and a thin stroke behaves differently on a dark ground — pure black with
+white lines glares, and a hairline that read as grey on white vanishes
+completely — so the paper is a near-black with some blue in it and the rules
+come *up* in value rather than down.
+
+Two rules hold it together, both enforced:
+
+- **No screen writes a colour literal.** A test scans every source file bar
+  `Theme.kt` for `Color(0x…)`. A literal is a colour that cannot follow the
+  scheme, and it will be the one thing still glowing white on a dark phone.
+- **Contrast is arithmetic, not opinion.** The same test computes WCAG ratios
+  for every mark and label against its own paper: 4.5:1 for the 9sp labels and
+  the secondary text, 3:1 for the bold O/X glyphs, 4.5:1 for banner text on its
+  fill. The shipped light-mode green is 1.4:1 on a near-black chart, which
+  looks fine in a screenshot taken at noon and is a smudge on a phone at night;
+  the test says `dark/yes on paper: 1.52:1` and fails.
 
 ## The two things worth knowing
 
