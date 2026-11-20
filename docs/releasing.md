@@ -90,8 +90,9 @@ for people. Both live in `defaultConfig`.
 | 1 / 0.1.0 | the solvable app: library, chart, marks, assist, progress |
 | 2 / 0.2.0 | content sync, the solved tally, "check my work" |
 | 3 / 0.3.0 | dark mode, the settings screen, the launcher icon |
+| 4 / 0.3.1 | the chart fits the screen on open; reveal removed |
 
-Only `v0.3.0` is tagged. 0.1.0 and 0.2.0 were version *names* that existed in
+0.3.0 and 0.3.1 are tagged. 0.1.0 and 0.2.0 were version *names* that existed in
 the build file for a while and were never released, and inventing tags for
 them after the fact would put two releases in the history that nobody could
 ever have installed. F-Droid builds from tags, so from here each release gets

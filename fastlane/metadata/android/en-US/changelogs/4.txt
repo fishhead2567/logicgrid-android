@@ -1,0 +1,5 @@
+The chart now fits the screen when a puzzle opens, instead of starting
+zoomed in at the top-left corner.
+
+Removed the unused code that could fill in the answer. The app tells you
+whether you have gone wrong; it does not tell you what the answer is.
