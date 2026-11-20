@@ -1,0 +1,53 @@
+Logic grid puzzles — the kind with a short introduction, a numbered list of
+clues, and a chart you fill in with circles and crosses until only one answer
+survives.
+
+Fifty puzzles ship inside the app. A fresh install with no network at all has
+every one of them.
+
+<b>How it works</b>
+
+Tap a cell, mark it O or X. Circling a cell rules out the rest of its row and
+column automatically, because that is pencil-work the rules force rather than
+a deduction you should have to repeat by hand.
+
+Anything that <i>is</i> a deduction stays yours unless you ask for help.
+Transitivity and last-cell-standing live behind an opt-in Assist setting, so
+the app never quietly solves the part you were working on.
+
+The answer sheet reads off whatever you have actually determined, not whatever
+blocks you happened to fill in. Pin two of the three blocks on a three-category
+grid and the third follows; you do not have to write it out to be told you are
+done.
+
+<b>Check my work</b>
+
+Tells you whether what you have can still be right. Not how many marks are
+wrong — a player told "one" knows it was recent — and not which, because that
+hands over part of the answer. Just whether you have gone wrong somewhere, the
+way glancing at the back of a puzzle magazine does.
+
+<b>Every puzzle is proved before it ships</b>
+
+Each one has been verified to have exactly one solution, reachable by
+deduction without guessing unless its difficulty says otherwise. The generator
+that makes them is free software too, and the puzzles are a separate repository
+of plain JSON under the same licence.
+
+<b>What it does not do</b>
+
+No account. No sign-in. No analytics, no advertising, no tracking of any kind.
+Your progress is stored on the device and goes nowhere else.
+
+The only network request the app ever makes is an unauthenticated fetch of
+public puzzle files, to pick up new puzzles when there are some. It runs in the
+background, it is never on the path to playing, and every failure is silent —
+the app has a full set either way. If an update would replace puzzles you had
+started, it says so first, and your solved count survives even when the grids
+cannot.
+
+<b>Fits the screen it is on</b>
+
+The chart pans and zooms with sticky headers on both axes, labels can be shown
+upright or turned a quarter turn as a printed chart has them, and the whole app
+follows the system's light or dark setting.

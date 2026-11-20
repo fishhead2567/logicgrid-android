@@ -89,12 +89,30 @@ for people. Both live in `defaultConfig`.
 |---|---|
 | 1 / 0.1.0 | the solvable app: library, chart, marks, assist, progress |
 | 2 / 0.2.0 | content sync, the solved tally, "check my work" |
+| 3 / 0.3.0 | dark mode, the settings screen, the launcher icon |
+
+Only `v0.3.0` is tagged. 0.1.0 and 0.2.0 were version *names* that existed in
+the build file for a while and were never released, and inventing tags for
+them after the fact would put two releases in the history that nobody could
+ever have installed. F-Droid builds from tags, so from here each release gets
+one.
+
+## Listing metadata lives in this repo
+
+`fastlane/metadata/android/en-US/` holds the title, the short and full
+descriptions, a per-`versionCode` changelog and a 512×512 icon. F-Droid reads
+that directory straight out of the repo, and so do several other tools, which
+is better than keeping the listing text in a store console: it changes in the
+same commit as the thing it describes.
+
+[`docs/fdroid.md`](fdroid.md) has the F-Droid submission checklist.
 
 ## What is still missing before a real release
 
-- A 512×512 PNG for a store listing, if it ever goes to one. The launcher
-  icon itself is a vector and needs no raster sizes, but Play's listing form
-  wants a bitmap; it renders from the same numbers.
+- Screenshots. `fastlane/metadata/android/en-US/images/phoneScreenshots/` is
+  the one real gap in the listing metadata; the development screenshots show
+  an app that predates dark mode, the settings screen and two content
+  regenerations.
 - An `aab` and a Play listing, if it is ever going to a store at all; a
   sideloaded signed APK needs neither.
 - A privacy statement. There is nothing to say beyond "nothing leaves the

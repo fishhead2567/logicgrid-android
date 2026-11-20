@@ -1,0 +1,10 @@
+Dark mode, following the system — chart included.
+
+A settings screen: assist on new puzzles, turned labels, which puzzle set you
+are on, and a button to check for new ones.
+
+A launcher icon at last, instead of the Android default.
+
+Puzzle content is now fetched in the background. If an update would replace
+puzzles you had started, you are told before it happens, and your all-time
+solved count survives even when the grids cannot.
