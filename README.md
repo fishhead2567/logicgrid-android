@@ -5,10 +5,11 @@ handful of clues and a blank chart are enough to pin down who grew which marrow
 and in what month.
 
 The puzzles come from [logicgrid-puzzles][content], generated and proved unique
-by the `logicgrid` Python package (not published). Fifty of them ship inside the
+by the [`logicgrid`][generator] Python package. Fifty of them ship inside the
 APK, so a fresh install with no network has the full set.
 
 [content]: https://github.com/fishhead2567/logicgrid-puzzles
+[generator]: https://github.com/fishhead2567/logicgrid-generator
 
 ## Status
 
