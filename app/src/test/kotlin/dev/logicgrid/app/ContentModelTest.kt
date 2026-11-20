@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -182,6 +183,40 @@ class ContentModelTest {
         assertTrue(store.startedPids().isEmpty(), "no progress remains for a departed puzzle")
         assertTrue(store.solvedPids().isEmpty())
         assertEquals(2, store.solvedEver().size, "the tally is the thing that survives")
+    }
+
+    // -- what the settings screen shows and does -----------------------------
+
+    @Test
+    fun `an explicit check happens even after the automatic one`(@TempDir root: File) = runTest {
+        val model = model(root, reseeded, InMemoryProgressStore())
+        model.refresh()
+        advanceUntilIdle()
+        val automatic = reseeded.asked
+        assertTrue(automatic > 0)
+
+        // The once-per-process guard is there so walking back to the library
+        // does not re-hit the network. A tap on "Check for new puzzles" is a
+        // different thing and has to get through it.
+        model.recheck()
+        advanceUntilIdle()
+        assertTrue(reseeded.asked > automatic, "the button did nothing")
+    }
+
+    @Test
+    fun `info says which set is being served`(@TempDir root: File) = runTest {
+        val model = model(root, reseeded, InMemoryProgressStore())
+        val before = model.info()
+        assertTrue(before.bundled, "no cache yet, so it is the one in the APK")
+        assertEquals(3, before.puzzles)
+        assertEquals("2026-11-19T00:00:00+00:00", before.generated)
+
+        model.refresh()
+        advanceUntilIdle()
+
+        val after = model.info()
+        assertFalse(after.bundled, "now it is a download, and saying otherwise would be a lie")
+        assertEquals("2026-11-21T00:00:00+00:00", after.generated)
     }
 
     @Test

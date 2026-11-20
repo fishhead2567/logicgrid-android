@@ -81,6 +81,10 @@ fun AppRoot() {
     // only ever update on a cold start.
     var revision by remember { mutableStateOf(0) }
 
+    // Saveable, so the settings screen survives a rotation rather than
+    // dropping back to the library.
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+
     // The puzzle itself, held rather than looked up per frame.
     //
     // A content update can land while someone is solving, and the puzzle they
@@ -109,21 +113,37 @@ fun AppRoot() {
         val started = remember(revision, content.library) { store.startedPids() }
         val tally = remember(revision, content.library) { store.solvedEver().size }
         LaunchedEffect(Unit) { content.refresh() }
-        MenuScreen(
-            entries = content.library,
-            stateOf = {
-                when {
-                    it.pid in solved -> RowState.Solved
-                    it.pid in started -> RowState.InProgress
-                    else -> RowState.Untouched
-                }
-            },
-            onOpen = { openPid = it.pid },
-            solvedEver = tally,
-            sync = content.status,
-            onAcknowledge = content::acknowledge,
-            onDismiss = content::dismiss,
-        )
+        if (settingsOpen) {
+            // System back returns to the library, not out of the app.
+            BackHandler(enabled = true) { settingsOpen = false }
+            SettingsScreen(
+                prefs = store,
+                // Re-read when the library or the sync state changes, so a
+                // check started from in here updates what it is showing.
+                info = remember(content.library, content.status) { content.info() },
+                sync = content.status,
+                solvedEver = tally,
+                onCheckForUpdates = content::recheck,
+                onBack = { settingsOpen = false },
+            )
+        } else {
+            MenuScreen(
+                entries = content.library,
+                stateOf = {
+                    when {
+                        it.pid in solved -> RowState.Solved
+                        it.pid in started -> RowState.InProgress
+                        else -> RowState.Untouched
+                    }
+                },
+                onOpen = { openPid = it.pid },
+                solvedEver = tally,
+                sync = content.status,
+                onAcknowledge = content::acknowledge,
+                onDismiss = content::dismiss,
+                onSettings = { settingsOpen = true },
+            )
+        }
     } else {
         val leave = {
             revision++

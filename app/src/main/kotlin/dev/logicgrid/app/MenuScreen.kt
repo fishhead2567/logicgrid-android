@@ -46,11 +46,16 @@ fun MenuScreen(
     sync: SyncUi = SyncUi.Quiet,
     onAcknowledge: () -> Unit = {},
     onDismiss: () -> Unit = {},
+    onSettings: () -> Unit = {},
 ) {
     val chart = LocalChart.current
     val solved = entries.count { stateOf(it) == RowState.Solved }
     Column(modifier.fillMaxSize()) {
-        Column(Modifier.padding(16.dp, 14.dp, 16.dp, 8.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(16.dp, 14.dp, 4.dp, 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Column(Modifier.weight(1f)) {
             Text("Logic Problems", style = MaterialTheme.typography.titleLarge)
             Text(
                 // The all-time figure appears only once it says something the
@@ -62,6 +67,10 @@ fun MenuScreen(
                 color = chart.dim,
                 modifier = Modifier.testTag("menuSummary"),
             )
+          }
+            TextButton(onClick = onSettings, modifier = Modifier.testTag("settings")) {
+                Text("Settings")
+            }
         }
         SyncNotice(sync, onDismiss)
         HorizontalDivider()

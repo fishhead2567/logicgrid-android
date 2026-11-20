@@ -116,6 +116,37 @@ class ContentModel(
         content.source().bytes(entry.path)?.let { PuzzleJson.parse(it.decodeToString()) }
 
     /**
+     * Which set is being served, for the settings screen to state plainly.
+     *
+     * Worth showing because the answer is not obvious from inside the app: the
+     * library may be coming from the APK or from a download, and after a
+     * failed sync those look identical.
+     */
+    data class Info(val puzzles: Int, val generated: String, val bundled: Boolean)
+
+    fun info(): Info {
+        val manifest = content.localManifest()
+        return Info(
+            puzzles = manifest?.entries?.size ?: 0,
+            generated = manifest?.generated ?: "unknown",
+            bundled = content.servingBundled(),
+        )
+    }
+
+    /**
+     * Check again now, because the player asked.
+     *
+     * The once-per-process guard exists so that walking back to the library
+     * does not re-hit the network; an explicit tap is a different thing and
+     * clears it.
+     */
+    fun recheck() {
+        attempted = false
+        status = SyncUi.Quiet
+        refresh()
+    }
+
+    /**
      * Check once per process, and apply straight away unless the player has to
      * be told first.
      */

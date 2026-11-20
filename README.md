@@ -23,7 +23,7 @@ fetched in the background.
 
 Dark mode follows the system, chart and all.
 
-Not built yet: the settings screen; a way to reveal the answer
+Not built yet: a way to reveal the answer
 (`SolveViewModel` has `revealSolution()`, but nothing in the UI calls it); and
 narrative clue text — the manifest records which puzzles have a narration and
 the library shows it, but the solve screen renders the canonical wording in

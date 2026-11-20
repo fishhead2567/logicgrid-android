@@ -25,6 +25,15 @@ import dev.logicgrid.core.PuzzleProgress
  */
 interface ViewPrefs {
     var rotatedHeaders: Boolean
+
+    /**
+     * Whether a puzzle opened for the first time starts with assist on.
+     *
+     * A *default*, not a global setting: assist changes which marks the board
+     * holds, so it is board state and travels with the board. This only
+     * decides what a board that does not exist yet starts out as.
+     */
+    var assistByDefault: Boolean
 }
 
 interface ProgressStore {
@@ -59,6 +68,7 @@ class InMemoryProgressStore(
     initial: Map<String, PuzzleProgress> = emptyMap(),
 ) : ProgressStore, ViewPrefs {
     override var rotatedHeaders: Boolean = false
+    override var assistByDefault: Boolean = false
     private val map = HashMap(initial)
     private val ever = initial.filterValues { it.solved }.keys.toMutableSet()
     override fun read(pid: String) = map[pid] ?: PuzzleProgress()
@@ -93,6 +103,10 @@ class PrefsProgressStore(context: Context) : ProgressStore, ViewPrefs {
     override var rotatedHeaders: Boolean
         get() = prefs.getBoolean("view:rotatedHeaders", false)
         set(value) { prefs.edit().putBoolean("view:rotatedHeaders", value).apply() }
+
+    override var assistByDefault: Boolean
+        get() = prefs.getBoolean("view:assistByDefault", false)
+        set(value) { prefs.edit().putBoolean("view:assistByDefault", value).apply() }
 
     private fun key(pid: String) = "p:$pid"
 

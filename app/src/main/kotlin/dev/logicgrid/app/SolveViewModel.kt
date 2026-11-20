@@ -130,6 +130,13 @@ class SolveViewModel(
         val saved = store.read(puzzle.pid)
         everSolved = saved.solved
         state = saved.toBoardState()
+        // The default applies to a puzzle that has never been opened, and only
+        // to that. A board that was saved with assist off was saved that way
+        // on purpose, and changing the default later must not reach back and
+        // switch it on under them.
+        if (!saved.started && saved.userMarks.isEmpty()) {
+            state = state.copy(assist = prefs.assistByDefault)
+        }
         closure = when (val r = Board.closure(puzzle, state)) {
             is ClosureResult.Ok -> r.closure
             // A save that no longer fits its puzzle -- content changed under a

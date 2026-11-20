@@ -238,6 +238,9 @@ class ContentSync(
     /** The manifest of whichever set [source] would serve. */
     fun localManifest(): ContentManifest? = manifestOf(source())
 
+    /** True when the set in use is the one in the APK rather than a download. */
+    fun servingBundled(): Boolean = source() !is DirSource
+
     private fun manifestOf(source: ContentSource): ContentManifest? = try {
         source.manifestText()?.let { ManifestJson.parseManifest(it) }
     } catch (e: Exception) {
