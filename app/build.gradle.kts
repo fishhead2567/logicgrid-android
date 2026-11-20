@@ -1,10 +1,26 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
 }
+
+/**
+ * Release signing, on machines that hold the key.
+ *
+ * `keystore.properties` and the keystore it points at are gitignored and no
+ * part of this repo. A clone without them still builds a release -- it comes
+ * out unsigned, which is honest and installable with `--no-streaming`-style
+ * manual signing, rather than a build that fails with a missing-file error
+ * nobody can act on. See docs/releasing.md.
+ */
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val signingKeyAvailable = keystoreProperties.getProperty("storeFile") != null
 
 android {
     namespace = "dev.logicgrid.app"
@@ -14,20 +30,36 @@ android {
         applicationId = "dev.logicgrid.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (signingKeyAvailable) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
             // On from the start: R8 breakage only shows up on a device, and
-            // finding it at the end is how release builds get delayed.
+            // finding it at the end is how release builds get delayed. It
+            // needs no keep rules -- see app/proguard-rules.pro for why.
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            if (signingKeyAvailable) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

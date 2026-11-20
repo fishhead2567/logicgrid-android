@@ -4,3 +4,9 @@ local.properties
 *.iml
 .idea/
 .kotlin/
+
+# Signing. The keystore is a long-lived credential and the properties file
+# holds its passwords in the clear; neither belongs in a repo, public or not.
+keystore.properties
+*.jks
+*.keystore
