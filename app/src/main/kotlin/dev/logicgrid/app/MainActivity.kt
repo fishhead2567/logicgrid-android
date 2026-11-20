@@ -1,6 +1,5 @@
 package dev.logicgrid.app
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -29,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,23 +42,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.logicgrid.core.LibraryEntry
-import dev.logicgrid.core.ManifestJson
 import dev.logicgrid.core.Puzzle
-import dev.logicgrid.core.PuzzleJson
-
-/** Reads the content bundled in assets. The network is never on this path. */
-object AssetContent {
-    fun library(context: Context): List<LibraryEntry> =
-        context.assets.open("content/manifest.json").use {
-            ManifestJson.parse(it.readBytes().decodeToString())
-        }
-
-    fun puzzle(context: Context, entry: LibraryEntry): Puzzle =
-        context.assets.open("content/${entry.path}").use {
-            PuzzleJson.parse(it.readBytes().decodeToString())
-        }
-}
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,7 +69,7 @@ class MainActivity : ComponentActivity() {
 fun AppRoot() {
     val context = LocalContext.current
     val store = remember { PrefsProgressStore(context) }
-    val library = remember { AssetContent.library(context) }
+    val content = remember { ContentModel.forApp(context, store) }
 
     // Which puzzle is open, or null for the menu. rememberSaveable so a
     // rotation or a process death returns to the same puzzle rather than
@@ -95,12 +81,36 @@ fun AppRoot() {
     // only ever update on a cold start.
     var revision by remember { mutableStateOf(0) }
 
-    val entry = library.firstOrNull { it.pid == openPid }
-    if (entry == null) {
-        val solved = remember(revision) { store.solvedPids() }
-        val started = remember(revision) { store.startedPids() }
+    // The puzzle itself, held rather than looked up per frame.
+    //
+    // A content update can land while someone is solving, and the puzzle they
+    // are on may not be in the new set. Looking the entry up every frame would
+    // then drop them back to the menu mid-grid. Once a puzzle is open it stays
+    // open until they leave it.
+    var open: Puzzle? by remember { mutableStateOf(null) }
+    LaunchedEffect(openPid, content.library) {
+        val pid = openPid
+        if (pid == null) {
+            open = null
+        } else if (open?.pid != pid) {
+            open = withContext(Dispatchers.IO) {
+                content.library.firstOrNull { it.pid == pid }?.let { content.puzzle(it) }
+            }
+            // Restored to a puzzle the current set no longer has.
+            if (open == null) openPid = null
+        }
+    }
+
+    val puzzle = open
+    if (puzzle == null) {
+        // Both are re-read when an update lands, because applying one forgets
+        // the progress of every puzzle that left.
+        val solved = remember(revision, content.library) { store.solvedPids() }
+        val started = remember(revision, content.library) { store.startedPids() }
+        val tally = remember(revision, content.library) { store.solvedEver().size }
+        LaunchedEffect(Unit) { content.refresh() }
         MenuScreen(
-            entries = library,
+            entries = content.library,
             stateOf = {
                 when {
                     it.pid in solved -> RowState.Solved
@@ -109,9 +119,12 @@ fun AppRoot() {
                 }
             },
             onOpen = { openPid = it.pid },
+            solvedEver = tally,
+            sync = content.status,
+            onAcknowledge = content::acknowledge,
+            onDismiss = content::dismiss,
         )
     } else {
-        val puzzle = remember(entry.pid) { AssetContent.puzzle(context, entry) }
         val leave = {
             revision++
             openPid = null

@@ -34,10 +34,23 @@ data class LibraryEntry(
     val bytes: Int,
     /** Null when this puzzle has no narrated version; most have none. */
     val narrativePath: String? = null,
+    val narrativeSha256: String? = null,
+    val narrativeBytes: Int = 0,
 ) {
     /** "3x4" -- categories by items, the shape of the chart. */
     val shape: String get() = "${categories}x$items"
     val narrated: Boolean get() = narrativePath != null
+
+    /**
+     * The files this entry is made of, for the sync to hash and to fetch. A
+     * puzzle always; a narrative only where one exists.
+     */
+    val files: List<ContentFile> get() = buildList {
+        add(ContentFile(path, sha256, bytes))
+        if (narrativePath != null && narrativeSha256 != null) {
+            add(ContentFile(narrativePath, narrativeSha256, narrativeBytes))
+        }
+    }
 }
 
 object ManifestJson {
@@ -47,6 +60,26 @@ object ManifestJson {
         json.parseToJsonElement(text).jsonObject
             .getValue("puzzles").jsonArray
             .map { entry(it.jsonObject) }
+
+    /**
+     * The header as well as the entries, and the text they came from.
+     *
+     * The sync needs all three: `generated` to tell a stale cache from a fresh
+     * one, `schema` to refuse a manifest a shipped build cannot read, and the
+     * verbatim text so a cached manifest is byte for byte what was served
+     * rather than a re-serialisation that silently drops whatever fields this
+     * build happens to ignore.
+     */
+    fun parseManifest(text: String): ContentManifest {
+        val root = json.parseToJsonElement(text).jsonObject
+        return ContentManifest(
+            schema = root["schema"]?.jsonPrimitive?.int ?: 1,
+            generated = root["generated"]?.jsonPrimitive?.content ?: "",
+            generator = root["generator"]?.jsonPrimitive?.content ?: "",
+            entries = root.getValue("puzzles").jsonArray.map { entry(it.jsonObject) },
+            text = text,
+        )
+    }
 
     private fun entry(obj: JsonObject): LibraryEntry {
         val file = obj.getValue("puzzle").jsonObject
@@ -67,6 +100,10 @@ object ManifestJson {
             bytes = file.getValue("bytes").jsonPrimitive.int,
             narrativePath = obj["narrative"]
                 ?.jsonObject?.get("path")?.jsonPrimitive?.content,
+            narrativeSha256 = obj["narrative"]
+                ?.jsonObject?.get("sha256")?.jsonPrimitive?.content,
+            narrativeBytes = obj["narrative"]
+                ?.jsonObject?.get("bytes")?.jsonPrimitive?.int ?: 0,
         )
     }
 }

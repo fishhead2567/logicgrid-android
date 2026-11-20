@@ -34,6 +34,24 @@ interface ProgressStore {
     fun solvedPids(): Set<String>
     fun startedPids(): Set<String>
     fun clear(pid: String)
+
+    /**
+     * Every pid ever solved on this device, whether or not the library still
+     * contains it.
+     *
+     * A content update replaces puzzles, and a grid half-finished on a puzzle
+     * that no longer exists cannot be kept. The *fact* of having solved it can
+     * be, and should be: losing the record of fifty solved puzzles because the
+     * set was regenerated is a worse loss than losing one grid in progress.
+     * So this set is only ever added to, including by [forget].
+     */
+    fun solvedEver(): Set<String>
+
+    /**
+     * Drop progress for puzzles the content set no longer contains, keeping
+     * their place in [solvedEver].
+     */
+    fun forget(pids: Collection<String>)
 }
 
 /** Test double. Same contract, no device. */
@@ -42,11 +60,20 @@ class InMemoryProgressStore(
 ) : ProgressStore, ViewPrefs {
     override var rotatedHeaders: Boolean = false
     private val map = HashMap(initial)
+    private val ever = initial.filterValues { it.solved }.keys.toMutableSet()
     override fun read(pid: String) = map[pid] ?: PuzzleProgress()
-    override fun write(pid: String, progress: PuzzleProgress) { map[pid] = progress }
+    override fun write(pid: String, progress: PuzzleProgress) {
+        map[pid] = progress
+        if (progress.solved) ever += pid
+    }
     override fun solvedPids() = map.filterValues { it.solved }.keys.toSet()
     override fun startedPids() = map.filterValues { it.started }.keys.toSet()
     override fun clear(pid: String) { map.remove(pid) }
+    override fun solvedEver() = ever + solvedPids()
+    override fun forget(pids: Collection<String>) {
+        ever += pids.filter { map[it]?.solved == true }
+        pids.forEach { map.remove(it) }
+    }
 }
 
 /**
@@ -69,12 +96,39 @@ class PrefsProgressStore(context: Context) : ProgressStore, ViewPrefs {
 
     private fun key(pid: String) = "p:$pid"
 
+    private companion object {
+        /** Deliberately outside the `p:` namespace that [scan] walks. */
+        const val EVER = "solved:ever"
+    }
+
     override fun read(pid: String): PuzzleProgress =
         ProgressJson.decode(prefs.getString(key(pid), null))
 
     override fun write(pid: String, progress: PuzzleProgress) {
-        prefs.edit().putString(key(pid), ProgressJson.encode(progress)).apply()
+        val edit = prefs.edit().putString(key(pid), ProgressJson.encode(progress))
+        if (progress.solved) edit.putStringSet(EVER, stored() + pid)
+        edit.apply()
     }
+
+    /**
+     * The stored set, unioned with whatever is still solved in the library.
+     *
+     * The union is not redundancy -- it is the migration. Installs that
+     * predate this key have solved puzzles recorded only in their progress
+     * blobs, and reading both means the tally is right on the first launch
+     * after the upgrade without a migration step to write and get wrong.
+     */
+    override fun solvedEver(): Set<String> = stored() + solvedPids()
+
+    override fun forget(pids: Collection<String>) {
+        val solved = pids.filter { read(it).solved }
+        val edit = prefs.edit()
+        pids.forEach { edit.remove(key(it)) }
+        if (solved.isNotEmpty()) edit.putStringSet(EVER, stored() + solved)
+        edit.apply()
+    }
+
+    private fun stored(): Set<String> = prefs.getStringSet(EVER, emptySet()) ?: emptySet()
 
     override fun solvedPids(): Set<String> = scan { it.solved }
 

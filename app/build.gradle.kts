@@ -36,7 +36,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true }
+    // JUnit 5 for the module's JVM tests. AGP still defaults to JUnit 4,
+    // and :core is already on Jupiter -- one framework across the repo.
+    testOptions { unitTests.all { it.useJUnitPlatform() } }
     sourceSets["main"].kotlin.srcDir("src/main/kotlin")
+    sourceSets["test"].kotlin.srcDir("src/test/kotlin")
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 
@@ -55,6 +59,10 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testRuntimeOnly(libs.junit.platform.launcher)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
     androidTestImplementation(platform(libs.compose.bom))

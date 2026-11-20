@@ -17,13 +17,12 @@ is no release, no Play listing, and no signing config in this repo.
 
 What works today: the library screen, the composite grid with pan/zoom and
 sticky headers on both axes, selection with O/X/clear, forced elimination,
-opt-in assist, mistake checking, reveal, and progress that survives the process
-being killed.
+opt-in assist, mistake checking, reveal, progress that survives the process
+being killed, and content updates fetched in the background.
 
-Not built yet: content sync over the network (assets only for now), the
-settings screen, and narrative clue text — the manifest records which puzzles
-have a narration and the library shows it, but the solve screen renders the
-canonical wording in every case. [`ROADMAP.md`](ROADMAP.md) has the full plan
+Not built yet: the settings screen, and narrative clue text — the manifest
+records which puzzles have a narration and the library shows it, but the solve
+screen renders the canonical wording in every case. [`ROADMAP.md`](ROADMAP.md) has the full plan
 and the measurements behind the UI decisions; read it as intent, not as a
 description of what is here.
 
@@ -64,7 +63,8 @@ how releases slip.
 
 ```
 core/   pure Kotlin/JVM. No Android dependencies at all.
-        Model, the 14-kind clue IR, the Board closure, JSON, the manifest.
+        Model, the 14-kind clue IR, the Board closure, JSON, the manifest,
+        and the content sync — HTTP and files, but nothing Android.
 app/    Compose UI, ViewModels, SharedPreferences-backed progress,
         and the bundled content in src/main/assets/content/.
 ```
@@ -106,6 +106,40 @@ or in conflict detection is caught at the step it first appears, in the shape it
 first appears. `GridGeometry`, the chart's coordinate maths, gets 24 tests of
 its own for the same reason: pan, zoom and hit-testing are easy to get subtly
 wrong and miserable to debug through a touchscreen.
+
+## An update knows what it will cost before it costs it
+
+The app ships the full set in `assets/`, so a fresh install with no network has
+every puzzle. On launch it fetches `manifest.json` — 22 KiB — in the background
+and works out what an update would mean **from the manifest alone**, before
+downloading anything else.
+
+That is possible because progress is keyed on `pid` and the manifest carries
+every `pid`. So the two kinds of update are told apart for the price of one
+request:
+
+| | |
+|---|---|
+| prose was fixed, puzzles unchanged | the pids hold, so every grid survives. Silent: changed files are fetched, the rest copied forward, and a line under the title says so. |
+| the set was regenerated | the pids all move, so no grid in progress can be carried over. A notice names what it will cost, and the update applies once it has been read. |
+
+Both happened to this project's content repo inside one afternoon, which is why
+the distinction is built in rather than guessed at.
+
+There is no decline. Puzzles leave because they no longer exist upstream, so
+there is nothing to keep the old set for; what the notice guarantees is that
+nobody loses a half-solved grid to something they never saw happen. **The
+solved count survives regardless** — `solvedEver` is only ever added to, so
+"47 all time" outlives the puzzles that earned it even when their grids cannot
+be kept.
+
+A new set is built in a staging directory and swapped in whole, with the
+manifest written last. Writing it in place would be the subtle bug: filenames
+are reused between generations, so a half-applied update leaves the old
+manifest describing new content — every checksum still verifying, every `pid`,
+title and rating attached to a puzzle that is no longer in that file. Any
+failure at all — no network, a captive portal, a truncated file, a hash that
+disagrees — keeps the old set and shows the player nothing.
 
 ## Progress is keyed on `pid`, never the filename
 

@@ -132,6 +132,19 @@ Both `assist=false` and `assist=true` traces, since assist is the subtle half.
 
 ## 3. `:data` — content sync
 
+> **Built**, as `ContentSync` in `:core` and `ContentModel` in `:app`, not as a
+> `:data` module. A sync is HTTP plus files and a plan computed from two
+> manifests; none of that needs Android, so putting it in `:core` made it
+> testable with a temp directory and a fake fetcher instead of with Robolectric
+> and MockWebServer. Room is still not here and still not needed — see the
+> note under `ProgressStore`.
+>
+> One thing the plan below did not anticipate: step 5's "never a dialog" is
+> right for a *failure*, but an update that destroys a half-solved grid is not
+> a failure, and saying nothing about it is worse than asking. The rule that
+> shipped is: silent when nothing is lost, one notice when something is, and
+> never a choice. See the README.
+
 Offline-first. The network is never on the critical path to playing.
 
 1. The full 429 KiB content set is **bundled in `assets/`**, so a fresh install
