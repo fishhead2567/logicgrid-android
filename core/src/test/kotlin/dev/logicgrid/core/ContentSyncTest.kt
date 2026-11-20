@@ -1,5 +1,7 @@
 package dev.logicgrid.core
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -7,6 +9,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.util.Collections
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.max
 
 /**
  * The sync, against two real content sets in two real directories.
@@ -169,7 +174,7 @@ class ContentSyncTest {
             "only the three rewritten files need fetching",
         )
 
-        val result = sync.apply(remote, plan) as SyncResult.Applied
+        val result = runBlocking { sync.apply(remote, plan) } as SyncResult.Applied
         assertEquals(3, result.fetched, "the two unchanged puzzles are copied, not downloaded")
         assertEquals(5, result.puzzles)
         assertTrue(result.departed.isEmpty())
@@ -209,7 +214,7 @@ class ContentSyncTest {
         val sync = ContentSync(root, shipped.source(), fetcher)
         val (remote, plan) = sync.check(emptySet(), emptySet())!!
 
-        val result = sync.apply(remote, plan)
+        val result = runBlocking { sync.apply(remote, plan) }
         assertTrue(result is SyncResult.Failed, "a hash mismatch must not be applied: $result")
         assertTrue((result as SyncResult.Failed).reason.contains("02-theme"))
 
@@ -228,7 +233,7 @@ class ContentSyncTest {
             FakeFetcher(reseeded, truncate = setOf("puzzles/03-theme.json")),
         )
         val (remote, plan) = sync.check(emptySet(), emptySet())!!
-        val result = sync.apply(remote, plan)
+        val result = runBlocking { sync.apply(remote, plan) }
         assertTrue(result is SyncResult.Failed, "half a puzzle is not a puzzle: $result")
         assertEquals(shipped.pids, sync.localManifest()!!.pids)
     }
@@ -242,7 +247,7 @@ class ContentSyncTest {
             FakeFetcher(reseeded, broken = setOf("puzzles/04-theme.json")),
         )
         val (remote, plan) = sync.check(emptySet(), emptySet())!!
-        assertTrue(sync.apply(remote, plan) is SyncResult.Failed)
+        assertTrue(runBlocking { sync.apply(remote, plan) } is SyncResult.Failed)
         assertEquals(shipped.pids, sync.localManifest()!!.pids)
     }
 
@@ -258,7 +263,7 @@ class ContentSyncTest {
             FakeFetcher(reseeded, broken = setOf("puzzles/05-theme.json")),
         )
         val (remote, plan) = sync.check(emptySet(), emptySet())!!
-        sync.apply(remote, plan)
+        runBlocking { sync.apply(remote, plan) }
 
         val local = sync.localManifest()!!
         for (file in local.files) {
@@ -297,7 +302,7 @@ class ContentSyncTest {
     fun `an applied set is served afterwards`(@TempDir root: File) {
         val sync = sync(root, reseeded)
         val (remote, plan) = sync.check(emptySet(), emptySet())!!
-        sync.apply(remote, plan)
+        runBlocking { sync.apply(remote, plan) }
         assertEquals(reseeded.pids, sync.localManifest()!!.pids)
         assertEquals("clues Z", sync.source().bytes("puzzles/01-theme.json")!!.decodeToString())
     }
@@ -319,7 +324,7 @@ class ContentSyncTest {
         val sync = ContentSync(root, shipped.source(), fetcher)
         val (remote, plan) = sync.check(emptySet(), emptySet())!!
         assertTrue(plan.idle)
-        assertEquals(SyncResult.UpToDate, sync.apply(remote, plan))
+        assertEquals(SyncResult.UpToDate, runBlocking { sync.apply(remote, plan) })
         assertEquals(listOf("manifest.json"), fetcher.asked, "an unchanged set costs one request")
     }
 
@@ -332,7 +337,7 @@ class ContentSyncTest {
         val sync = ContentSync(root, shipped.source(), FakeFetcher(withNarrative))
         val (remote, plan) = sync.check(emptySet(), emptySet())!!
         assertTrue(plan.fetch.any { it.path == "narratives/01-theme.json" })
-        sync.apply(remote, plan)
+        runBlocking { sync.apply(remote, plan) }
         assertEquals(
             "Once upon a time",
             sync.source().bytes("narratives/01-theme.json")!!.decodeToString(),
@@ -340,6 +345,102 @@ class ContentSyncTest {
     }
 
     private val Content.pids: Set<String> get() = puzzles.map { it.pid }.toSet()
+
+    // -- how the downloading runs --------------------------------------------
+
+    /** Thirty files, enough that running them one at a time is visible. */
+    private val wholeNewSet = content(
+        "2026-12-01T00:00:00+00:00",
+        (1..30).map { "pid%02d".format(it) to "clues $it" },
+    )
+
+    /** Serves [wholeNewSet] slowly, recording how many calls overlap. */
+    private class SlowFetcher(
+        private val set: Content,
+        private val breakOn: String? = null,
+        private val delayMs: Long = 20,
+    ) : ContentFetcher {
+        val asked = AtomicInteger()
+        val peakInFlight = AtomicInteger()
+        private val inFlight = AtomicInteger()
+
+        override fun fetch(path: String): ByteArray {
+            if (path == "manifest.json") return set.manifest.encodeToByteArray()
+            asked.incrementAndGet()
+            if (path == breakOn) error("connection reset")
+            val now = inFlight.incrementAndGet()
+            peakInFlight.updateAndGet { max(it, now) }
+            try {
+                // Stands in for the round trip, which is nearly all of the
+                // real cost: 50 files took 6.2s sequentially against GitHub.
+                Thread.sleep(delayMs)
+                return set.files[path] ?: error("404 $path")
+            } finally {
+                inFlight.decrementAndGet()
+            }
+        }
+    }
+
+    @Test
+    fun `files are fetched a few at a time, and never more than the limit`(
+        @TempDir root: File,
+    ) = runBlocking(Dispatchers.IO) {
+        val fetcher = SlowFetcher(wholeNewSet)
+        val sync = ContentSync(root, shipped.source(), fetcher)
+        val (remote, plan) = sync.check(emptySet(), emptySet())!!
+        assertTrue(sync.apply(remote, plan) is SyncResult.Applied)
+
+        assertTrue(
+            fetcher.peakInFlight.get() > 1,
+            "nothing overlapped, so this is still sequential",
+        )
+        assertTrue(
+            fetcher.peakInFlight.get() <= ContentSync.PARALLEL,
+            "${fetcher.peakInFlight.get()} at once, limit is ${ContentSync.PARALLEL}",
+        )
+    }
+
+    @Test
+    fun `progress reports every file exactly once, and ends at the total`(
+        @TempDir root: File,
+    ) = runBlocking(Dispatchers.IO) {
+        val sync = ContentSync(root, shipped.source(), SlowFetcher(wholeNewSet, delayMs = 0))
+        val (remote, plan) = sync.check(emptySet(), emptySet())!!
+        val counts = Collections.synchronizedList(mutableListOf<Int>())
+        val totals = Collections.synchronizedSet(mutableSetOf<Int>())
+        sync.apply(remote, plan) { done, total ->
+            counts += done
+            totals += total
+        }
+
+        val expected = remote.files.size
+        assertEquals(setOf(expected), totals, "the total must not move while it runs")
+        assertEquals(
+            (1..expected).toList(),
+            counts.sorted(),
+            "each file counted once, and the last one reaches the total",
+        )
+    }
+
+    @Test
+    fun `a failure stops the downloads that have not started`(@TempDir root: File) =
+        runBlocking(Dispatchers.IO) {
+            // The one that breaks is in the first batch, so nothing after it
+            // should ever be asked for. Downloading all thirty and only then
+            // reporting the failure would waste a phone's data on a set that
+            // is going to be thrown away.
+            val fetcher = SlowFetcher(wholeNewSet, breakOn = "puzzles/03-theme.json")
+            val sync = ContentSync(root, shipped.source(), fetcher)
+            val (remote, plan) = sync.check(emptySet(), emptySet())!!
+            assertTrue(sync.apply(remote, plan) is SyncResult.Failed)
+            // A batch that is already in flight finishes -- a blocking read
+            // cannot be interrupted -- so the bound is the batch size and a
+            // little slack, not the exact count.
+            assertTrue(
+                fetcher.asked.get() <= ContentSync.PARALLEL + 2,
+                "asked for ${fetcher.asked.get()} of ${remote.files.size} before stopping",
+            )
+        }
 
     @Test
     fun `stale progress from an older set does not warn about nothing`(@TempDir root: File) {

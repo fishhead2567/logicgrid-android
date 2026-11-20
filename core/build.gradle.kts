@@ -20,6 +20,8 @@ java {
 
 dependencies {
     implementation(libs.kotlinx.serialization.json)
+    // The sync fetches a few files at a time; nothing else here needs it.
+    implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

@@ -49,6 +49,18 @@ sealed interface SyncUi {
      */
     data class Warning(val puzzles: Int, val started: Int, val solved: Int) : SyncUi
 
+    /**
+     * Downloading, with [done] of [total] files finished.
+     *
+     * [blocking] separates the two cases, because they are not the same event
+     * to the player. An update nobody was warned about is housekeeping and
+     * gets a line of text. An update they just tapped through is something
+     * they are waiting on, so it holds the screen until it is done -- both to
+     * show that it is happening at all, and because the library is about to be
+     * replaced underneath them.
+     */
+    data class Working(val done: Int, val total: Int, val blocking: Boolean) : SyncUi
+
     data class Updated(val puzzles: Int, val lost: Int) : SyncUi
 }
 
@@ -133,25 +145,39 @@ class ContentModel(
                         solved = plan.losesSolved.size,
                     )
                 }
-                else -> apply(remote, plan)
+                else -> apply(remote, plan, blocking = false)
             }
         }
     }
 
-    /** The player has seen the warning. */
+    /** The player has seen the warning, so it now holds the screen. */
     fun acknowledge() {
         val (remote, plan) = pending ?: return
         pending = null
-        scope.launch { apply(remote, plan) }
+        scope.launch { apply(remote, plan, blocking = true) }
     }
 
     fun dismiss() {
         status = SyncUi.Quiet
     }
 
-    private suspend fun apply(remote: ContentManifest, plan: SyncPlan) {
-        status = SyncUi.Checking
-        when (val result = withContext(io) { content.apply(remote, plan) }) {
+    private suspend fun apply(remote: ContentManifest, plan: SyncPlan, blocking: Boolean) {
+        status = SyncUi.Working(0, remote.files.size, blocking)
+        val result = withContext(io) {
+            content.apply(remote, plan) { done, total ->
+                // Called from whichever download thread finished the file, so
+                // it is handed back to the main thread before it reaches any
+                // Compose state. The guard is for the last one or two, which
+                // can land after the apply has already returned: a stale
+                // count must not undo the result.
+                scope.launch {
+                    if (status is SyncUi.Working) {
+                        status = SyncUi.Working(done, total, blocking)
+                    }
+                }
+            }
+        }
+        when (result) {
             is SyncResult.Applied -> {
                 // Only now, and only for puzzles that are actually gone. The
                 // solved tally keeps them; the grids cannot be kept, because

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,6 +72,50 @@ fun MenuScreen(
         }
     }
     if (sync is SyncUi.Warning) WipeWarning(sync, onAcknowledge)
+    if (sync is SyncUi.Working && sync.blocking) Updating(sync)
+}
+
+/**
+ * Holds the screen while an acknowledged update downloads.
+ *
+ * Two jobs, and the second is the one that is easy to miss. It shows that
+ * something is happening -- tapping through the notice and getting a library
+ * that looks untouched for twenty seconds reads as a dead button. And it stops
+ * a puzzle being opened in the meantime, because the set those rows describe
+ * is the one being replaced: start the old puzzle 40 and the update lands and
+ * there is no puzzle 40.
+ *
+ * Only for the acknowledged path. A silent update has nothing to interrupt and
+ * no reason to.
+ */
+@Composable
+private fun Updating(sync: SyncUi.Working) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Updating puzzles") },
+        text = {
+            Column {
+                LinearProgressIndicator(
+                    progress = {
+                        if (sync.total == 0) 0f else sync.done.toFloat() / sync.total
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("syncProgress"),
+                )
+                Spacer(Modifier.height(12.dp))
+                // The number, not only the bar: a bar that moves in six
+                // uneven jumps looks stuck, and the count never does.
+                Text(
+                    "${sync.done} of ${sync.total} files",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF666666),
+                )
+            }
+        },
+        // No button at all. There is nothing to decide and nothing to cancel:
+        // the old set is already on its way out.
+        confirmButton = {},
+        modifier = Modifier.testTag("syncUpdating"),
+    )
 }
 
 /**
@@ -85,6 +130,11 @@ fun MenuScreen(
 private fun SyncNotice(sync: SyncUi, onDismiss: () -> Unit) {
     val (message, colour) = when (sync) {
         is SyncUi.Checking -> "Checking for new puzzles…" to Color(0xFF888888)
+        // The blocking case has the dialog instead; this is the quiet one,
+        // where nothing is at stake and the line is the whole of the news.
+        is SyncUi.Working ->
+            if (sync.blocking) return
+            else "Updating… ${sync.done} of ${sync.total}" to Color(0xFF888888)
         is SyncUi.Updated -> {
             val lost = if (sync.lost > 0) " · ${sync.lost} replaced" else ""
             "Updated — ${sync.puzzles} puzzles$lost" to Color(0xFF1B7F3B)

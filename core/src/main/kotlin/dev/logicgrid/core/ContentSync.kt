@@ -1,9 +1,16 @@
 package dev.logicgrid.core
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Keeping the bundled puzzles up to date with the content repo.
@@ -276,43 +283,85 @@ class ContentSync(
      * that changes five puzzles downloads five puzzles -- or fetched and
      * hash-verified. The manifest is written last, and the swap happens only
      * once the whole set is present and correct.
+     *
+     * Downloads run [PARALLEL] at a time. Sequentially, a full 50-file reseed
+     * took 6.2 seconds against the real repo on a wired connection, which is
+     * most of a minute on a thin mobile one -- and nearly all of it is waiting
+     * for a round trip rather than reading bytes.
+     *
+     * @param onProgress files finished out of the total. **Called from
+     *   whichever thread finished the file**, so a caller that touches UI
+     *   state has to marshal it.
      */
-    fun apply(remote: ContentManifest, plan: SyncPlan): SyncResult {
+    suspend fun apply(
+        remote: ContentManifest,
+        plan: SyncPlan,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
+    ): SyncResult {
         if (plan.idle) return SyncResult.UpToDate
         val from = source()
         staging.deleteRecursively()
         if (!staging.mkdirs()) return SyncResult.Failed("cannot create " + staging.path)
-        var fetched = 0
+
+        val total = remote.files.size
+        val done = AtomicInteger(0)
+        val wanted = plan.fetch.associateBy { it.path }
         try {
-            val wanted = plan.fetch.associateBy { it.path }
+            // Every directory the set needs, up front. mkdirs() from several
+            // download threads at once races with itself and returns false for
+            // the loser, who then looks like a failure it is not.
+            remote.files.mapNotNull { File(staging, it.path).parentFile }
+                .distinct()
+                .forEach { if (!it.isDirectory && !it.mkdirs()) error("cannot create " + it.path) }
+
+            // What is already held, first: it is local, it cannot fail on the
+            // network, and it gets the count moving straight away.
             for (file in remote.files) {
-                val bytes: ByteArray
-                if (file.path in wanted) {
-                    fetched++
-                    val got = fetcher.fetch(file.path)
-                    val digest = sha256(got)
-                    if (digest != file.sha256) {
-                        return fail(
-                            file.path + ": expected " + file.sha256.take(12) +
-                                ", got " + digest.take(12)
-                        )
-                    }
-                    if (got.size != file.bytes) {
-                        return fail(
-                            file.path + ": expected " + file.bytes +
-                                " bytes, got " + got.size
-                        )
-                    }
-                    bytes = got
-                } else {
-                    bytes = from.bytes(file.path) ?: return fail(file.path + ": vanished mid-sync")
-                }
-                val out = File(staging, file.path)
-                out.parentFile?.mkdirs()
-                out.writeBytes(bytes)
+                if (file.path in wanted) continue
+                val bytes = from.bytes(file.path) ?: error(file.path + ": vanished mid-sync")
+                File(staging, file.path).writeBytes(bytes)
+                onProgress(done.incrementAndGet(), total)
             }
+
+            // The rest, a few at a time. No dispatcher of its own: this
+            // inherits the caller's, so a test can run it on a test
+            // dispatcher and the app runs it on Dispatchers.IO.
+            coroutineScope {
+                val gate = Semaphore(PARALLEL)
+                plan.fetch.map { file ->
+                    async {
+                        gate.withPermit {
+                            val got = fetcher.fetch(file.path)
+                            val digest = sha256(got)
+                            if (digest != file.sha256) {
+                                error(
+                                    file.path + ": expected " + file.sha256.take(12) +
+                                        ", got " + digest.take(12)
+                                )
+                            }
+                            if (got.size != file.bytes) {
+                                error(
+                                    file.path + ": expected " + file.bytes +
+                                        " bytes, got " + got.size
+                                )
+                            }
+                            File(staging, file.path).writeBytes(got)
+                            onProgress(done.incrementAndGet(), total)
+                        }
+                    }
+                }.awaitAll()
+                // The first file to fail cancels the rest, because
+                // coroutineScope rethrows and tears down its children. A
+                // failed sync should stop downloading, not finish politely.
+            }
+
             // Written last, and only once every file it describes is present.
             File(staging, "manifest.json").writeText(remote.text)
+        } catch (e: CancellationException) {
+            // Somebody else cancelled us. Clear the rubble, but do not dress
+            // it up as a failure the caller should report.
+            staging.deleteRecursively()
+            throw e
         } catch (e: Exception) {
             return fail(e.message ?: e.javaClass.simpleName)
         }
@@ -323,7 +372,7 @@ class ContentSync(
             return fail("cannot clear " + live.path)
         }
         if (!staging.renameTo(live)) return fail("cannot move the new set into place")
-        return SyncResult.Applied(remote.entries.size, fetched, plan.departs)
+        return SyncResult.Applied(remote.entries.size, plan.fetch.size, plan.departs)
     }
 
     private fun fail(reason: String): SyncResult.Failed {
@@ -332,6 +381,15 @@ class ContentSync(
     }
 
     companion object {
+        /**
+         * How many files are fetched at once.
+         *
+         * Six is the per-host limit browsers settled on, and the same
+         * reasoning applies: enough to hide the round trips, few enough that
+         * a phone on a weak connection is not fighting itself for bandwidth.
+         */
+        const val PARALLEL = 6
+
         /** Where the content lives. Raw HTTPS, no API, no token. */
         const val DEFAULT_BASE =
             "https://raw.githubusercontent.com/fishhead2567/logicgrid-puzzles/main"

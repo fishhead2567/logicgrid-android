@@ -133,6 +133,19 @@ solved count survives regardless** — `solvedEver` is only ever added to, so
 "47 all time" outlives the puzzles that earned it even when their grids cannot
 be kept.
 
+Downloads run six at a time. Sequentially a 50-file reseed took 6.2 s against
+the real repo on a wired connection — most of a minute on a thin mobile one —
+and nearly all of it was waiting for round trips rather than reading bytes; six
+at a time brings the same update to 0.9 s. The first failure cancels the rest,
+so a set that is going to be discarded does not finish downloading first.
+
+An update the player has acknowledged holds the library behind a progress
+dialog until it lands. That is not ceremony: tapping through a notice and
+getting a library that looks untouched reads as a dead button, and the rows on
+screen describe the set being replaced, so opening one of them mid-swap is a
+puzzle that is about to stop existing. A silent update has nothing to interrupt
+and gets a line of text instead.
+
 A new set is built in a staging directory and swapped in whole, with the
 manifest written last. Writing it in place would be the subtle bug: filenames
 are reused between generations, so a half-applied update leaves the old
