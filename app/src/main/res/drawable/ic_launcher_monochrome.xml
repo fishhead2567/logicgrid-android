@@ -13,8 +13,8 @@
     a line, it is a rumour.
 
     This design survives the layer better than the alternatives did: its
-    hierarchy is already carried by stroke weight rather than by hue, so losing
-    colour costs it nothing it was relying on.
+    hierarchy is already carried by stroke weight rather than by hue, so
+    losing colour costs it nothing it was relying on.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -23,21 +23,21 @@
     android:viewportHeight="108">
 
     <path
-        android:pathData="M36,6V102 M72,6V102 M6,36H102 M6,72H102"
+        android:pathData="M30,6V102 M60,6V102 M90,6V102 M6,30H102 M6,60H102 M6,90H102"
         android:strokeColor="#000000"
         android:strokeAlpha="0.42"
         android:strokeWidth="3"
         android:strokeLineCap="round" />
 
     <path
-        android:pathData="M12,48l12,12 M24,48l-12,12 M84,48l12,12 M96,48l-12,12 M48,12l12,12 M60,12l-12,12 M48,84l12,12 M60,84l-12,12"
+        android:pathData="M9,39l12,12 M21,39l-12,12 M69,39l12,12 M81,39l-12,12 M99,39l12,12 M111,39l-12,12 M39,9l12,12 M51,9l-12,12 M39,69l12,12 M51,69l-12,12 M39,99l12,12 M51,99l-12,12"
         android:strokeColor="#000000"
         android:strokeAlpha="0.82"
         android:strokeWidth="4.4"
         android:strokeLineCap="round" />
 
     <path
-        android:pathData="M38.5,54a15.5,15.5 0 1,0 31,0a15.5,15.5 0 1,0 -31,0"
+        android:pathData="M29.5,45a15.5,15.5 0 1,0 31,0a15.5,15.5 0 1,0 -31,0"
         android:strokeColor="#000000"
         android:strokeWidth="7" />
 

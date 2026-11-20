@@ -1,28 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    C4, "Hierarchy": one circled cell and the four eliminations it forces.
+    One circled cell and the eliminations it forces, on a four-column grid.
 
-    The geometry, because every number in here was chosen against a constraint
+    The geometry, because every number here was chosen against a constraint
     rather than by eye:
 
       canvas      108 x 108, the adaptive-icon standard
       visible     the middle 72 (18..90) is all the launcher guarantees
       safe        a circle of radius 33 from centre (54,54) — no mask clips it
-      cell pitch  36, so the grid rules fall at 36 and 72 and the circled cell
-                  is the middle one
-      ring        r 15.5, stroke 7, centred — comfortably inside the safe circle
-      crosses     centred 36 out, arms 6 long, stroke 4.4, alpha 0.82
+      cell pitch  30, rules at 30, 60 and 90 on both axes
+      ring        r 15.5, stroke 7, centred on the cell at (45,45)
+      crosses     the rest of that cell's row and column, arms 6, stroke 4.4
 
-    The crosses are deliberately lighter and thinner than the ring. Two reasons.
-    The hierarchy is the meaning — the ring is the mark, the crosses are what it
-    did — and shorter arms reach 42 units from centre instead of 44, so a
-    circular mask grazes a tip rather than taking a limb. Full-weight crosses at
-    this pitch cannot be made safe without shrinking the ring to r 10, which
-    gives back most of what made this design worth choosing.
+    Four columns rather than three, and that is a deliberate trade. With an
+    even column count no cell is centred, so the circled cell sits up and to
+    the left of the icon's middle. The three-column version was balanced but
+    read as noughts and crosses — an O in the middle of a 3x3 grid is that
+    game, whatever else it is also meant to be.
 
-    The grid rules run off all four edges on purpose: the chart continues past
-    the frame, and it means the icon fills its tile under a square mask instead
-    of floating in a ring of empty ground.
+    The ring is still safe where it matters: its centre is 12.7 units from the
+    icon's, plus an outer radius of 19, which reaches 31.7 — inside the safe
+    circle's 33 with a little to spare. The crosses are not, and are not meant
+    to be. They run the full row and column, off the edges and past the mask,
+    because that is what forced elimination does: the whole row and the whole
+    column, further than the frame can show.
+
+    The crosses are lighter and thinner than the ring on purpose. The ring is
+    the mark; the crosses are what it did.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -30,17 +34,17 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- The implied grid. Faint, and off the edges. -->
+    <!-- The chart, continuing past the frame on all four sides. -->
     <path
-        android:pathData="M36,6V102 M72,6V102 M6,36H102 M6,72H102"
+        android:pathData="M30,6V102 M60,6V102 M90,6V102 M6,30H102 M6,60H102 M6,90H102"
         android:strokeColor="#FFFFFF"
         android:strokeAlpha="0.28"
         android:strokeWidth="3"
         android:strokeLineCap="round" />
 
-    <!-- The four forced eliminations: up, down, left, right of the circle. -->
+    <!-- The circled cell's row and column, eliminated. -->
     <path
-        android:pathData="M12,48l12,12 M24,48l-12,12 M84,48l12,12 M96,48l-12,12 M48,12l12,12 M60,12l-12,12 M48,84l12,12 M60,84l-12,12"
+        android:pathData="M9,39l12,12 M21,39l-12,12 M69,39l12,12 M81,39l-12,12 M99,39l12,12 M111,39l-12,12 M39,9l12,12 M51,9l-12,12 M39,69l12,12 M51,69l-12,12 M39,99l12,12 M51,99l-12,12"
         android:strokeColor="#FFFFFF"
         android:strokeAlpha="0.82"
         android:strokeWidth="4.4"
@@ -48,7 +52,7 @@
 
     <!-- The circled cell. Two half-arcs, because path data has no circle. -->
     <path
-        android:pathData="M38.5,54a15.5,15.5 0 1,0 31,0a15.5,15.5 0 1,0 -31,0"
+        android:pathData="M29.5,45a15.5,15.5 0 1,0 31,0a15.5,15.5 0 1,0 -31,0"
         android:strokeColor="#FFFFFF"
         android:strokeWidth="7" />
 
