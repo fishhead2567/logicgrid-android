@@ -257,16 +257,6 @@ class SolveViewModel(
         }
     }
 
-    /** Fill the board from the answer key. Distinct from revealSelection,
-     *  which only scrolls. */
-    fun revealSolution() {
-        val r = Board.fromSolution(puzzle, state.assist)
-        history.addLast(state)
-        state = r.state
-        closure = r.closure
-        recompute()
-    }
-
     fun reset() {
         history.addLast(state)
         state = BoardState(assist = state.assist)
@@ -282,8 +272,26 @@ class SolveViewModel(
     var viewport: CoreSize by mutableStateOf(CoreSize(0f, 0f))
         private set
 
+    /**
+     * Whether the chart has been sized to the screen yet.
+     *
+     * Once only, and per puzzle. Re-fitting on every viewport change would
+     * throw away a pinch the moment anything resized the window.
+     */
+    private var fitted = false
+
     fun onViewportChanged(size: CoreSize) {
         viewport = size
+        // The first real measurement is the first chance to fit the chart to
+        // the screen, and a chart that opens at 1x sits in the top-left corner
+        // of a phone-sized space looking like a rendering bug. The roadmap has
+        // said "default zoom fits width" since before the chart was drawn; the
+        // call existed, behind a menu, and nothing ever made it on open.
+        if (!fitted && size.width > 0f && size.height > 0f) {
+            fitted = true
+            fitWidth()
+            return
+        }
         // Re-clamp: a rotation or a window resize can shrink the viewport and
         // strand already-panned content off-screen with no way back.
         geometry = geometry.withPan(geometry.clampPan(geometry.pan, size))

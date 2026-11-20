@@ -109,10 +109,9 @@ same commit as the thing it describes.
 
 ## What is still missing before a real release
 
-- Screenshots. `fastlane/metadata/android/en-US/images/phoneScreenshots/` is
-  the one real gap in the listing metadata; the development screenshots show
-  an app that predates dark mode, the settings screen and two content
-  regenerations.
+- Nothing in the listing metadata. Four screenshots were taken on a Pixel 9
+  emulator at API 36 against the current build: the library, a part-solved
+  chart, the same chart in dark mode, and settings.
 - An `aab` and a Play listing, if it is ever going to a store at all; a
   sideloaded signed APK needs neither.
 - A privacy statement. There is nothing to say beyond "nothing leaves the

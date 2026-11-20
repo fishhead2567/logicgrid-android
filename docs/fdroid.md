@@ -26,7 +26,7 @@ the buildserver needs.
 | No proprietary blobs | ✅ no Play Services, no Firebase |
 | Builds from a tag | ✅ since `v0.3.0` |
 | Listing metadata in-repo | ✅ `fastlane/metadata/android/en-US/` |
-| Screenshots | ❌ still missing |
+| Screenshots | ✅ four, taken on a Pixel 9 emulator at API 36 |
 
 ### The dependency check, done rather than assumed
 
@@ -117,14 +117,14 @@ carries your signature rather than F-Droid's, which needs the upload key that
 
 ## What is left before either
 
-1. **Screenshots.** The only real gap. See
-   `fastlane/metadata/android/en-US/images/phoneScreenshots/README.md` — the
-   ones taken during development show an app that no longer exists.
-2. **A 512×512 icon** is already in `fastlane/.../images/icon.png`, rendered
-   from the same vector the app uses.
-3. **Tag each release.** `UpdateCheckMode: Tags` means F-Droid watches for new
-   ones; a release that is not tagged does not exist as far as they are
-   concerned.
+Nothing, as far as the metadata goes. The one standing obligation is to **tag
+each release**: `UpdateCheckMode: Tags` means F-Droid watches for new tags, and
+a release that is not tagged does not exist as far as they are concerned.
+
+Screenshots will need retaking whenever the UI moves enough to make them a
+lie. The ones in the repo were taken against `v0.3.0` on a Pixel 9 emulator at
+API 36, and the set that preceded them had to be thrown away for exactly that
+reason.
 
 ## Releasing, from here
 

@@ -256,20 +256,6 @@ object Board {
         }
     }
 
-    /** Fill the whole chart correctly -- for *reveal*, and for tests. */
-    fun fromSolution(puzzle: Puzzle, assist: Boolean = false): MarkResult.Ok {
-        val marks = LinkedHashMap<Cell, Boolean>()
-        for ((catA, catB) in puzzle.schema.pairs) {
-            for (a in puzzle.schema.category(catA).refs()) {
-                for (b in puzzle.schema.category(catB).refs()) {
-                    marks[cellOf(a, b)] = puzzle.solution.sameEntity(a, b)
-                }
-            }
-        }
-        val state = BoardState(marks, assist)
-        return MarkResult.Ok(state, Closure(marks))
-    }
-
     // --- derived views ----------------------------------------------------
 
     /** `(confirmed, ruledOut)` for [ref] against one category. */

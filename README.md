@@ -25,9 +25,10 @@ fetched in the background.
 Dark mode follows the system, chart and all. The launcher icon is an adaptive
 icon over three vector layers, themed-icon layer included.
 
-Not built yet: a way to reveal the answer
-(`SolveViewModel` has `revealSolution()`, but nothing in the UI calls it); and
-narrative clue text — the manifest records which puzzles have a narration and
+There is deliberately no way to reveal the answer: the app will tell you
+whether you have gone wrong, and that is as far as it goes.
+
+Not built yet: narrative clue text — the manifest records which puzzles have a narration and
 the library shows it, but the solve screen renders the canonical wording in
 every case, and the published set currently has no narratives at all.
 [`ROADMAP.md`](ROADMAP.md) has the full plan and the measurements behind the UI
