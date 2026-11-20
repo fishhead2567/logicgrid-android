@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The icon's ground, as a colour rather than a drawable: the background
+        layer is one flat fill, and a one-rect vector would be a file to keep in
+        step with this value for no gain.
+
+        Same green as ChartColours.bannerGood, which is the O on the chart. The
+        icon and the thing it opens are the same green on purpose.
+
+        No values-night variant, and that is not an omission: a launcher icon is
+        one drawing. The system masks and tints it, but it never swaps it for a
+        dark-mode version the way the app's own surfaces do.
+    -->
+    <color name="ic_launcher_background">#1B7F3B</color>
+</resources>

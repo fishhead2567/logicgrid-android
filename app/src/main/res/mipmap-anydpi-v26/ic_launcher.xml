@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The adaptive icon: three layers, no bitmaps anywhere.
+
+    There are no PNG mipmaps in this project, and nothing is missing. Adaptive
+    icons arrived in API 26 and minSdk here is 26, so every device that can
+    install this app can render this file. The usual pile of
+    mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher.png exists to serve API 25 and
+    below, which is not a target.
+
+    There is also no android:roundIcon in the manifest, deliberately. It was
+    added in API 25 so a launcher could ask for a circular bitmap; an adaptive
+    icon makes it redundant, because the launcher masks these layers into
+    whatever shape it wants — circle, squircle, rounded square — and Google's
+    own guidance is to drop it once you ship one. A launcher that looks for it
+    falls back to android:icon, which is this.
+
+    -anydpi-v26 rather than plain -anydpi: it is the convention every tool
+    expects, and it costs nothing when every device is v26 or later.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>

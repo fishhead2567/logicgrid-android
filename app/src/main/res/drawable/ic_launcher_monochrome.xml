@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The themed-icon layer, Android 13 and up.
+
+    The system throws away both colour layers and tints this one from the
+    wallpaper, keeping only its alpha. So the colours below are irrelevant —
+    black by convention — and the alphas are everything.
+
+    Geometry identical to ic_launcher_foreground.xml, which is the point: a
+    monochrome layer that is a different drawing is a second icon to keep in
+    step. Only one thing changes. The grid rules go from 0.28 to 0.42, because
+    0.28 of a wallpaper-derived mid-tone on a wallpaper-derived ground is not
+    a line, it is a rumour.
+
+    This design survives the layer better than the alternatives did: its
+    hierarchy is already carried by stroke weight rather than by hue, so losing
+    colour costs it nothing it was relying on.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:pathData="M36,6V102 M72,6V102 M6,36H102 M6,72H102"
+        android:strokeColor="#000000"
+        android:strokeAlpha="0.42"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M12,48l12,12 M24,48l-12,12 M84,48l12,12 M96,48l-12,12 M48,12l12,12 M60,12l-12,12 M48,84l12,12 M60,84l-12,12"
+        android:strokeColor="#000000"
+        android:strokeAlpha="0.82"
+        android:strokeWidth="4.4"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M38.5,54a15.5,15.5 0 1,0 31,0a15.5,15.5 0 1,0 -31,0"
+        android:strokeColor="#000000"
+        android:strokeWidth="7" />
+
+</vector>

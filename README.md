@@ -22,7 +22,8 @@ opt-in assist, a check that says whether you have gone wrong without saying
 where, progress that survives the process being killed, and content updates
 fetched in the background.
 
-Dark mode follows the system, chart and all.
+Dark mode follows the system, chart and all. The launcher icon is an adaptive
+icon over three vector layers, themed-icon layer included.
 
 Not built yet: a way to reveal the answer
 (`SolveViewModel` has `revealSolution()`, but nothing in the UI calls it); and

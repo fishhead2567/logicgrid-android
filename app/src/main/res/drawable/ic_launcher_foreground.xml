@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    C4, "Hierarchy": one circled cell and the four eliminations it forces.
+
+    The geometry, because every number in here was chosen against a constraint
+    rather than by eye:
+
+      canvas      108 x 108, the adaptive-icon standard
+      visible     the middle 72 (18..90) is all the launcher guarantees
+      safe        a circle of radius 33 from centre (54,54) — no mask clips it
+      cell pitch  36, so the grid rules fall at 36 and 72 and the circled cell
+                  is the middle one
+      ring        r 15.5, stroke 7, centred — comfortably inside the safe circle
+      crosses     centred 36 out, arms 6 long, stroke 4.4, alpha 0.82
+
+    The crosses are deliberately lighter and thinner than the ring. Two reasons.
+    The hierarchy is the meaning — the ring is the mark, the crosses are what it
+    did — and shorter arms reach 42 units from centre instead of 44, so a
+    circular mask grazes a tip rather than taking a limb. Full-weight crosses at
+    this pitch cannot be made safe without shrinking the ring to r 10, which
+    gives back most of what made this design worth choosing.
+
+    The grid rules run off all four edges on purpose: the chart continues past
+    the frame, and it means the icon fills its tile under a square mask instead
+    of floating in a ring of empty ground.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- The implied grid. Faint, and off the edges. -->
+    <path
+        android:pathData="M36,6V102 M72,6V102 M6,36H102 M6,72H102"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.28"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+
+    <!-- The four forced eliminations: up, down, left, right of the circle. -->
+    <path
+        android:pathData="M12,48l12,12 M24,48l-12,12 M84,48l12,12 M96,48l-12,12 M48,12l12,12 M60,12l-12,12 M48,84l12,12 M60,84l-12,12"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.82"
+        android:strokeWidth="4.4"
+        android:strokeLineCap="round" />
+
+    <!-- The circled cell. Two half-arcs, because path data has no circle. -->
+    <path
+        android:pathData="M38.5,54a15.5,15.5 0 1,0 31,0a15.5,15.5 0 1,0 -31,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7" />
+
+</vector>

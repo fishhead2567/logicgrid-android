@@ -62,6 +62,24 @@ keytool -genkeypair -v -keystore logicgrid-upload.jks \
 Keep it outside the repo, back it up somewhere that is not this machine, and
 put its passwords in `keystore.properties`.
 
+## The launcher icon needs no bitmaps
+
+`res/mipmap-anydpi-v26/ic_launcher.xml` is an adaptive icon over three vector
+layers: a flat colour background, the drawing, and a monochrome layer for
+Android 13's themed icons. There is no `mipmap-mdpi/ic_launcher.png` or any of
+its four siblings, and that is not an omission — adaptive icons arrived in API
+26 and `minSdk` here is 26, so the bitmap fallbacks exist for devices this app
+cannot be installed on.
+
+There is no `android:roundIcon` either. It was added in API 25 so a launcher
+could request a circular bitmap; an adaptive icon makes it redundant, because
+the launcher masks the layers into whatever shape it wants. A launcher that
+looks for it falls back to `android:icon`.
+
+And there is no `values-night` variant: a launcher icon is one drawing. The
+system masks and tints it, but never swaps it for a dark-mode version the way
+the app's own surfaces do.
+
 ## Versioning
 
 `versionCode` is a monotonic integer Play orders updates by; `versionName` is
@@ -74,7 +92,9 @@ for people. Both live in `defaultConfig`.
 
 ## What is still missing before a real release
 
-- A launcher icon. The app ships the framework default.
+- A 512×512 PNG for a store listing, if it ever goes to one. The launcher
+  icon itself is a vector and needs no raster sizes, but Play's listing form
+  wants a bitmap; it renders from the same numbers.
 - An `aab` and a Play listing, if it is ever going to a store at all; a
   sideloaded signed APK needs neither.
 - A privacy statement. There is nothing to say beyond "nothing leaves the
