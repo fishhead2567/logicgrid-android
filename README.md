@@ -17,14 +17,16 @@ is no release, no Play listing, and no signing config in this repo.
 
 What works today: the library screen, the composite grid with pan/zoom and
 sticky headers on both axes, selection with O/X/clear, forced elimination,
-opt-in assist, mistake checking, reveal, progress that survives the process
-being killed, and content updates fetched in the background.
+opt-in assist, mistake checking, progress that survives the process being
+killed, and content updates fetched in the background.
 
-Not built yet: the settings screen, and narrative clue text — the manifest
-records which puzzles have a narration and the library shows it, but the solve
-screen renders the canonical wording in every case. [`ROADMAP.md`](ROADMAP.md) has the full plan
-and the measurements behind the UI decisions; read it as intent, not as a
-description of what is here.
+Not built yet: the settings screen; a way to reveal the answer
+(`SolveViewModel` has `revealSolution()`, but nothing in the UI calls it); and
+narrative clue text — the manifest records which puzzles have a narration and
+the library shows it, but the solve screen renders the canonical wording in
+every case, and the published set currently has no narratives at all.
+[`ROADMAP.md`](ROADMAP.md) has the full plan and the measurements behind the UI
+decisions; read it as intent, not as a description of what is here.
 
 ## Building
 
