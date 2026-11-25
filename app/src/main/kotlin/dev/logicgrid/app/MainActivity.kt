@@ -9,6 +9,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -42,6 +43,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.logicgrid.core.Narrative
 import dev.logicgrid.core.Puzzle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -92,14 +94,22 @@ fun AppRoot() {
     // then drop them back to the menu mid-grid. Once a puzzle is open it stays
     // open until they leave it.
     var open: Puzzle? by remember { mutableStateOf(null) }
+    var narrative: Narrative? by remember { mutableStateOf(null) }
     LaunchedEffect(openPid, content.library) {
         val pid = openPid
         if (pid == null) {
             open = null
         } else if (open?.pid != pid) {
-            open = withContext(Dispatchers.IO) {
-                content.library.firstOrNull { it.pid == pid }?.let { content.puzzle(it) }
+            // Both files in one IO pass: a narrative fetched a frame later
+            // would show the canonical clues first and then swap them under
+            // the player mid-read.
+            val loaded = withContext(Dispatchers.IO) {
+                content.library.firstOrNull { it.pid == pid }?.let { entry ->
+                    content.puzzle(entry)?.let { p -> p to content.narrative(entry, p) }
+                }
             }
+            open = loaded?.first
+            narrative = loaded?.second
             // Restored to a puzzle the current set no longer has.
             if (open == null) openPid = null
         }
@@ -152,14 +162,19 @@ fun AppRoot() {
         // System back leaves the puzzle, not the app. Marks are already on
         // disk by this point, so leaving never loses anything.
         BackHandler(enabled = true, onBack = leave)
-        SolveScreen(puzzle, store, onExit = leave)
+        SolveScreen(puzzle, store, narrative, onExit = leave)
     }
 }
 
 @Composable
-fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
+fun SolveScreen(
+    puzzle: Puzzle,
+    store: ProgressStore,
+    narrative: Narrative? = null,
+    onExit: () -> Unit,
+) {
     val chart = LocalChart.current
-    val model = remember(puzzle.pid) { SolveViewModel(puzzle, store) }
+    val model = remember(puzzle.pid) { SolveViewModel(puzzle, store, narrative = narrative) }
     val selected = model.selected
 
     Column(Modifier.fillMaxSize()) {
@@ -276,23 +291,68 @@ fun SolveScreen(puzzle: Puzzle, store: ProgressStore, onExit: () -> Unit) {
 
         AnswerSheet(puzzle, model.answer)
 
-        puzzle.text?.let { text ->
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(12.dp)
-                    .testTag("clues")
-            ) {
-                Text(text.intro.replace("**", ""), style = MaterialTheme.typography.bodySmall)
-                text.clues.forEachIndexed { i, clue ->
-                    Text(
-                        "${i + 1}. $clue",
-                        Modifier.padding(top = 6.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+        CluePanel(model)
+    }
+}
+
+
+/**
+ * The clue panel: narrated prose where this puzzle has any, canonical text
+ * otherwise.
+ *
+ * The two are interchangeable by construction -- a published narrative was
+ * read back by three independent extractors who all recovered the same unique
+ * solution -- so switching between them mid-puzzle can cost the player a
+ * sentence they were part way through, and nothing more.
+ *
+ * The narrated version prints its own title and scene, then the cast block
+ * verbatim, then its clues. The cast block is not narrated on purpose: it is a
+ * list, and a list read aloud as prose is longer and harder to scan than the
+ * list.
+ */
+@Composable
+private fun ColumnScope.CluePanel(model: SolveViewModel) {
+    val narrative = model.narrative
+    val canonical = model.puzzle.text
+    if (narrative == null && canonical == null) return
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .weight(1f)
+            .verticalScroll(rememberScrollState())
+            .padding(12.dp)
+            .testTag("clues")
+    ) {
+        val body = MaterialTheme.typography.bodySmall
+        if (model.narrated && narrative != null) {
+            if (narrative.title.isNotBlank()) {
+                Text(
+                    narrative.title,
+                    Modifier.padding(bottom = 6.dp).testTag("narrativeTitle"),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
+            if (narrative.introduction.isNotBlank()) {
+                Text(narrative.introduction, style = body)
+            }
+            if (narrative.preamble.isNotBlank()) {
+                Text(
+                    narrative.preamble.replace("**", ""),
+                    Modifier.padding(top = 8.dp),
+                    style = body,
+                )
+            }
+            narrative.clues.forEachIndexed { i, clue ->
+                Text(
+                    "${i + 1}. $clue",
+                    Modifier.padding(top = 6.dp),
+                    style = body,
+                )
+            }
+        } else if (canonical != null) {
+            Text(canonical.intro.replace("**", ""), style = body)
+            canonical.clues.forEachIndexed { i, clue ->
+                Text("${i + 1}. $clue", Modifier.padding(top = 6.dp), style = body)
             }
         }
     }
@@ -325,6 +385,16 @@ private fun ViewMenu(model: SolveViewModel) {
                 onClick = { model.toggleHeaderStyle(); open = false },
                 modifier = Modifier.testTag("menuHeaders"),
             )
+            // Absent rather than disabled when the puzzle has no narrative:
+            // a greyed row invites a tap and explains nothing, and most
+            // puzzles have none.
+            if (model.narrative != null) {
+                DropdownMenuItem(
+                    text = { Text(check(model.narrated) + "Narrated clues") },
+                    onClick = { model.toggleNarrated(); open = false },
+                    modifier = Modifier.testTag("menuNarrated"),
+                )
+            }
             HorizontalDivider()
             DropdownMenuItem(
                 // Not "Check answer": it does not show one. It says whether

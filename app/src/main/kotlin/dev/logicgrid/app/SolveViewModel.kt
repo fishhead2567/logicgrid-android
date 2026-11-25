@@ -13,6 +13,7 @@ import dev.logicgrid.core.ConflictReason
 import dev.logicgrid.core.GridCell
 import dev.logicgrid.core.GridGeometry
 import dev.logicgrid.core.MarkResult
+import dev.logicgrid.core.Narrative
 import dev.logicgrid.core.Pt
 import dev.logicgrid.core.Puzzle
 import dev.logicgrid.core.PuzzleProgress
@@ -29,7 +30,31 @@ class SolveViewModel(
     val puzzle: Puzzle,
     private val store: ProgressStore = InMemoryProgressStore(),
     private val prefs: ViewPrefs = store as? ViewPrefs ?: InMemoryProgressStore(),
+    /** The narrated text for this puzzle, where the content set has one. */
+    val narrative: Narrative? = null,
 ) : ViewModel() {
+
+    /**
+     * Whether the clue panel is showing the narrated text.
+     *
+     * A view choice, not board state: it changes which words the same facts
+     * are in, so unlike assist it cannot alter a single mark. It therefore
+     * lives in [ViewPrefs] with the other view choices, and the per-puzzle
+     * toggle writes the preference through -- a player who switches to the
+     * canonical text mid-puzzle almost certainly wants the next puzzle that
+     * way too.
+     *
+     * False whenever there is no narrative, so the panel never has to ask
+     * twice and the menu item can simply be absent.
+     */
+    var narrated: Boolean by mutableStateOf(narrative != null && prefs.narratedText)
+        private set
+
+    fun toggleNarrated() {
+        if (narrative == null) return
+        narrated = !narrated
+        prefs.narratedText = narrated
+    }
 
     private val history = ArrayDeque<BoardState>()
 

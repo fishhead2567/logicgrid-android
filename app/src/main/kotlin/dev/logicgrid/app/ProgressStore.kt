@@ -34,6 +34,17 @@ interface ViewPrefs {
      * decides what a board that does not exist yet starts out as.
      */
     var assistByDefault: Boolean
+
+    /**
+     * Whether a puzzle that has narrated text opens showing it.
+     *
+     * On by default. The narrated version is the one written to be read; the
+     * canonical text is written to be impossible to misread, which is not the
+     * same thing and reads like a specification. A player who prefers the
+     * specification can say so here or per puzzle, and the nine narrated
+     * puzzles are the only ones this changes anything for.
+     */
+    var narratedText: Boolean
 }
 
 interface ProgressStore {
@@ -69,6 +80,7 @@ class InMemoryProgressStore(
 ) : ProgressStore, ViewPrefs {
     override var rotatedHeaders: Boolean = false
     override var assistByDefault: Boolean = false
+    override var narratedText: Boolean = true
     private val map = HashMap(initial)
     private val ever = initial.filterValues { it.solved }.keys.toMutableSet()
     override fun read(pid: String) = map[pid] ?: PuzzleProgress()
@@ -107,6 +119,10 @@ class PrefsProgressStore(context: Context) : ProgressStore, ViewPrefs {
     override var assistByDefault: Boolean
         get() = prefs.getBoolean("view:assistByDefault", false)
         set(value) { prefs.edit().putBoolean("view:assistByDefault", value).apply() }
+
+    override var narratedText: Boolean
+        get() = prefs.getBoolean("view:narratedText", true)
+        set(value) { prefs.edit().putBoolean("view:narratedText", value).apply() }
 
     private fun key(pid: String) = "p:$pid"
 

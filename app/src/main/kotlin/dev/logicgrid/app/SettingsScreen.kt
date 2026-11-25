@@ -36,8 +36,9 @@ import androidx.compose.ui.unit.dp
  * been making one puzzle at a time, or a fact about the content set that the
  * app otherwise keeps to itself.
  *
- * Not here: a narrative-versus-canonical toggle. The published set has no
- * narratives, so it would be a switch with nothing on either side of it.
+ * The narrated-text switch was once deliberately absent, on the grounds that
+ * the published set had no narratives and it would be a switch with nothing on
+ * either side of it. Nine of the fifty are narrated now, so it is here.
  */
 @Composable
 fun SettingsScreen(
@@ -73,6 +74,17 @@ fun SettingsScreen(
             checked = prefs.assistByDefault,
             tag = "setAssist",
         ) { prefs.assistByDefault = it }
+
+        SwitchRow(
+            title = "Narrated clues",
+            detail = "Where a puzzle has a narrated version, open it. Same " +
+                "facts in better prose -- every published narrative was read " +
+                "back by three independent readers who each recovered the " +
+                "same single answer. Off gives the plain wording instead. " +
+                "Only some puzzles have one; the rest are unaffected.",
+            checked = prefs.narratedText,
+            tag = "setNarrated",
+        ) { prefs.narratedText = it }
 
         SwitchRow(
             title = "Turned labels",

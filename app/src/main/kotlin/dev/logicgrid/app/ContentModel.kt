@@ -10,6 +10,8 @@ import dev.logicgrid.core.ContentSync
 import dev.logicgrid.core.HttpFetcher
 import dev.logicgrid.core.LibraryEntry
 import dev.logicgrid.core.Puzzle
+import dev.logicgrid.core.Narrative
+import dev.logicgrid.core.NarrativeJson
 import dev.logicgrid.core.PuzzleJson
 import dev.logicgrid.core.SyncPlan
 import dev.logicgrid.core.SyncResult
@@ -114,6 +116,20 @@ class ContentModel(
     /** The puzzle behind an entry, from whichever set is being served. */
     fun puzzle(entry: LibraryEntry): Puzzle? =
         content.source().bytes(entry.path)?.let { PuzzleJson.parse(it.decodeToString()) }
+
+    /**
+     * The narrated text for a puzzle, where the served set has one.
+     *
+     * Null for the great majority of puzzles, and null too when the file on
+     * disk turns out to belong to a different puzzle -- see
+     * [NarrativeJson.forPuzzle], which checks the pid rather than trusting
+     * that the two files share a number.
+     */
+    fun narrative(entry: LibraryEntry, puzzle: Puzzle): Narrative? {
+        val path = entry.narrativePath ?: return null
+        val bytes = content.source().bytes(path) ?: return null
+        return NarrativeJson.forPuzzle(bytes.decodeToString(), puzzle)
+    }
 
     /**
      * Which set is being served, for the settings screen to state plainly.

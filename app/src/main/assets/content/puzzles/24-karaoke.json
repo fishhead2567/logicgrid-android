@@ -1,15 +1,15 @@
 {
-  "pid": "f93ca7baec7d",
-  "title": "Tuesday Night at the Dented Bell",
+  "pid": "b9cd504a1392",
+  "title": "Tuesday Night at the Rusty Anchor",
   "theme": "karaoke",
-  "blurb": "The Dented Bell runs karaoke on Tuesdays. Attendance is loyal; talent is not.",
+  "blurb": "The Rusty Anchor runs karaoke on Tuesdays. Attendance is loyal; talent is not.",
   "profile": "moderate",
   "rating": 4,
-  "score": 5.515,
-  "seed": 2026172865495,
+  "score": 5.675,
+  "seed": 2026173065501,
   "spec": {
     "difficulty": "moderate",
-    "seed": 2026172865495,
+    "seed": 2026173065501,
     "theme": "karaoke"
   },
   "schema": {
@@ -39,11 +39,11 @@
         "name": "singer",
         "label": "Singer",
         "items": [
-          "Deshawn",
+          "Bogdan",
           "Caitriona",
-          "Pernilla",
           "Vikram",
-          "Bogdan"
+          "Mercy",
+          "Pernilla"
         ],
         "ordered": false,
         "noun": "singer",
@@ -53,11 +53,11 @@
         "name": "drink",
         "label": "Drink",
         "items": [
+          "a hard cider in a plastic cup",
+          "a double bourbon",
           "a rum and coke",
-          "a lime and soda",
-          "a double whisky",
-          "tap water",
-          "a glass of the house red"
+          "a pitcher of light beer",
+          "tap water"
         ],
         "ordered": false,
         "noun": "drink",
@@ -67,11 +67,11 @@
         "name": "reception",
         "label": "Reception",
         "items": [
+          "one heckler",
           "a singalong",
-          "polite silence",
-          "a standing ovation",
-          "scattered applause",
-          "a request for an encore nobody wanted"
+          "the manager cutting the power",
+          "a request for an encore nobody wanted",
+          "scattered applause"
         ],
         "ordered": false,
         "noun": "reception",
@@ -84,14 +84,20 @@
       "style": "sentences",
       "atoms": [
         {
-          "kind": "before",
-          "a": "singer:Pernilla",
-          "b": "slot:slot three"
-        },
+          "kind": "between",
+          "a": "reception:the manager cutting the power",
+          "b": "slot:slot four",
+          "c": "slot:slot two"
+        }
+      ]
+    },
+    {
+      "style": "sentences",
+      "atoms": [
         {
-          "kind": "link",
-          "a": "reception:a request for an encore nobody wanted",
-          "b": "slot:slot three"
+          "kind": "immediately_before",
+          "a": "slot:slot one",
+          "b": "drink:a double bourbon"
         }
       ]
     },
@@ -100,8 +106,8 @@
       "atoms": [
         {
           "kind": "adjacent",
-          "a": "singer:Deshawn",
-          "b": "slot:slot five"
+          "a": "singer:Mercy",
+          "b": "slot:slot four"
         }
       ]
     },
@@ -109,11 +115,9 @@
       "style": "sentences",
       "atoms": [
         {
-          "kind": "gap",
-          "a": "drink:a glass of the house red",
-          "b": "slot:slot five",
-          "k": 4,
-          "rel": "eq"
+          "kind": "before",
+          "a": "drink:a pitcher of light beer",
+          "b": "reception:the manager cutting the power"
         }
       ]
     },
@@ -121,21 +125,30 @@
       "style": "sentences",
       "atoms": [
         {
-          "kind": "between",
-          "a": "reception:polite silence",
-          "b": "singer:Bogdan",
-          "c": "singer:Caitriona"
-        }
-      ]
-    },
-    {
-      "style": "sentences",
-      "atoms": [
-        {
-          "kind": "between",
+          "kind": "adjacent",
           "a": "drink:a rum and coke",
-          "b": "reception:a singalong",
-          "c": "reception:scattered applause"
+          "b": "reception:one heckler"
+        }
+      ]
+    },
+    {
+      "style": "sentences",
+      "atoms": [
+        {
+          "kind": "parity",
+          "a": "reception:a request for an encore nobody wanted",
+          "b": "singer:Mercy",
+          "same": false
+        }
+      ]
+    },
+    {
+      "style": "sentences",
+      "atoms": [
+        {
+          "kind": "adjacent",
+          "a": "drink:a double bourbon",
+          "b": "singer:Vikram"
         }
       ]
     },
@@ -145,7 +158,7 @@
         {
           "kind": "immediately_before",
           "a": "singer:Bogdan",
-          "b": "drink:a double whisky"
+          "b": "drink:a double bourbon"
         }
       ]
     },
@@ -154,8 +167,8 @@
       "atoms": [
         {
           "kind": "before",
-          "a": "drink:a lime and soda",
-          "b": "reception:a request for an encore nobody wanted"
+          "a": "reception:one heckler",
+          "b": "singer:Pernilla"
         }
       ]
     },
@@ -163,9 +176,9 @@
       "style": "sentences",
       "atoms": [
         {
-          "kind": "immediately_before",
-          "a": "reception:a singalong",
-          "b": "drink:a double whisky"
+          "kind": "adjacent",
+          "a": "drink:tap water",
+          "b": "reception:a singalong"
         }
       ]
     }
@@ -179,39 +192,38 @@
       "slot five"
     ],
     "singer": [
-      "Pernilla",
       "Bogdan",
+      "Caitriona",
       "Vikram",
-      "Deshawn",
-      "Caitriona"
+      "Pernilla",
+      "Mercy"
     ],
     "drink": [
-      "a glass of the house red",
-      "a lime and soda",
-      "a double whisky",
+      "a pitcher of light beer",
+      "a double bourbon",
       "a rum and coke",
-      "tap water"
+      "tap water",
+      "a hard cider in a plastic cup"
     ],
     "reception": [
-      "a standing ovation",
-      "a singalong",
+      "scattered applause",
+      "one heckler",
+      "the manager cutting the power",
       "a request for an encore nobody wanted",
-      "polite silence",
-      "scattered applause"
+      "a singalong"
     ]
   },
   "stats": {
-    "atoms": 9,
-    "numbered_clues": 8,
+    "atoms": 10,
+    "numbered_clues": 10,
     "kinds": {
+      "between": 1,
+      "immediately_before": 2,
+      "adjacent": 4,
       "before": 2,
-      "link": 1,
-      "adjacent": 1,
-      "gap": 1,
-      "between": 2,
-      "immediately_before": 2
+      "parity": 1
     },
-    "positives": 1,
+    "positives": 0,
     "compounds": 0
   },
   "solve": {
@@ -220,24 +232,25 @@
     "max_technique": "order",
     "steps": 41,
     "tier_counts": {
-      "direct": 1,
-      "bijection": 20,
+      "bijection": 21,
       "order": 20
     },
     "trial_eliminations": 0,
     "unknown_cells": 15
   },
   "text": {
-    "intro": "The Dented Bell runs karaoke on Tuesdays. Attendance is loyal; talent is not.\nFive singers are involved. Determine each singer's slot, drink and reception.\n- **Singer**: Deshawn, Caitriona, Pernilla, Vikram and Bogdan.\n- **Running order** (listed from earlier to later): slot one, slot two, slot three, slot four and slot five.\n- **Drink**: a rum and coke; a lime and soda; a double whisky; tap water; and a glass of the house red.\n- **Reception**: a singalong, polite silence, a standing ovation, scattered applause and a request for an encore nobody wanted.\nEvery singer has a different slot, drink and reception, so within each category every item is used exactly once.",
+    "intro": "The Rusty Anchor runs karaoke on Tuesdays. Attendance is loyal; talent is not.\nFive singers are involved. Determine each singer's slot, drink and reception.\n- **Singer**: Bogdan, Caitriona, Vikram, Mercy and Pernilla.\n- **Running order** (listed from earlier to later): slot one, slot two, slot three, slot four and slot five.\n- **Drink**: a hard cider in a plastic cup; a double bourbon; a rum and coke; a pitcher of light beer; and tap water.\n- **Reception**: one heckler, a singalong, the manager cutting the power, a request for an encore nobody wanted and scattered applause.\nEvery singer has a different slot, drink and reception, so within each category every item is used exactly once.",
     "clues": [
-      "Pernilla is earlier than slot three in slot order. The singer who gets a request for an encore nobody wanted sings in slot three.",
-      "Deshawn and slot five are exactly one slot apart in slot order, in one direction or the other.",
-      "The singer who orders a glass of the house red and slot five are exactly four slots apart in slot order.",
-      "The singer who gets polite silence falls somewhere between Bogdan and Caitriona in slot order.",
-      "The singer who orders a rum and coke falls somewhere between the singer who gets a singalong and the singer who gets scattered applause in slot order.",
-      "Bogdan is exactly one slot earlier than the singer who orders a double whisky, with no slot in between.",
-      "The singer who orders a lime and soda is earlier than the singer who gets a request for an encore nobody wanted in slot order.",
-      "The singer who gets a singalong is exactly one slot earlier than the singer who orders a double whisky, with no slot in between."
+      "The singer who gets the manager cutting the power falls somewhere between slot two and slot four in slot order, matching neither.",
+      "The singer who orders a double bourbon sings in slot two.",
+      "Mercy and slot four are exactly one slot apart in slot order, in one direction or the other.",
+      "The singer who orders a pitcher of light beer is earlier than the singer who gets the manager cutting the power in slot order.",
+      "The singer who orders a rum and coke and the singer who gets one heckler are exactly one slot apart in slot order, in one direction or the other.",
+      "One of the singer who gets a request for an encore nobody wanted and Mercy sits at an odd-numbered slot and the other at an even-numbered slot.",
+      "The singer who orders a double bourbon and Vikram are exactly one slot apart in slot order, in one direction or the other.",
+      "Bogdan is exactly one slot earlier than the singer who orders a double bourbon, with no slot in between.",
+      "The singer who gets one heckler is earlier than Pernilla in slot order.",
+      "The singer who orders tap water and the singer who gets a singalong are exactly one slot apart in slot order, in one direction or the other."
     ]
   }
 }
