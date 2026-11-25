@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.PathSensitivity
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -70,7 +71,21 @@ android {
     buildFeatures { compose = true }
     // JUnit 5 for the module's JVM tests. AGP still defaults to JUnit 4,
     // and :core is already on Jupiter -- one framework across the repo.
-    testOptions { unitTests.all { it.useJUnitPlatform() } }
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+            // The bundled puzzle set is an input to these tests.
+            //
+            // NarratedTextTest reads src/main/assets/content directly, which
+            // Gradle cannot see: refresh the content and the test task stays
+            // UP-TO-DATE, so the one check standing between a bad narrative
+            // and a phone silently does not run. Declaring the directory is
+            // what makes "tests pass" mean anything after a content sync.
+            it.inputs.dir(layout.projectDirectory.dir("src/main/assets/content"))
+                .withPropertyName("bundledContent")
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+        }
+    }
     sourceSets["main"].kotlin.srcDir("src/main/kotlin")
     sourceSets["test"].kotlin.srcDir("src/test/kotlin")
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }

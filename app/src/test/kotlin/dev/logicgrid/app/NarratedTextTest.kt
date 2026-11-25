@@ -60,6 +60,49 @@ class NarratedTextTest {
         }
     }
 
+    /**
+     * No bundled clue may claim two subjects where the grid allows one.
+     *
+     * "Araminta presses in April, as does the maker accused of ropiness" --
+     * who is Araminta. Each item belongs to exactly one subject, so two facts
+     * that pin the same item are one subject named twice, and "as does" tells
+     * the solver the opposite. A solver who believes it reaches a
+     * contradiction and blames the puzzle.
+     *
+     * The generator refuses to write these and its publisher refuses to ship
+     * them, which is where the rule belongs. This is here because the app's
+     * bundled set is copied in by hand: the check upstream cannot see a copy
+     * taken from a stale content repo, and this is the last thing between
+     * that copy and a phone. Three such narratives were bundled before anyone
+     * noticed.
+     */
+    @Test
+    fun `no bundled clue claims two subjects where there can be one`() {
+        val claims = listOf(
+            Regex(""",\s*as (does|do|did|is|are|was|were|has|have)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\band so (does|do|did|is|are|was|were|has|have)\b""", RegexOption.IGNORE_CASE),
+            Regex("""(^|\.\s+)So (does|do|did|is|are|was|were)\b"""),
+            Regex("""\blikewise\b""", RegexOption.IGNORE_CASE),
+            Regex(""",\s*too\b""", RegexOption.IGNORE_CASE),
+            Regex(""",\s*as well\b""", RegexOption.IGNORE_CASE),
+            Regex("""\bthe same (goes for|is true of|applies to|holds for)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\bditto\b""", RegexOption.IGNORE_CASE),
+        )
+        val bad = mutableListOf<String>()
+        for (entry in entries().filter { it.narrated }) {
+            val puzzle = PuzzleJson.parse(File(dir, entry.path).readText())
+            val narrative = NarrativeJson.forPuzzle(
+                File(dir, entry.narrativePath!!).readText(), puzzle,
+            ) ?: continue
+            narrative.clues.forEachIndexed { i, clue ->
+                claims.firstOrNull { it.containsMatchIn(clue) }?.let {
+                    bad += "${entry.id} clue ${i + 1}: $clue"
+                }
+            }
+        }
+        assertTrue(bad.isEmpty(), "clues claiming two subjects for one:\n" + bad.joinToString("\n"))
+    }
+
     @Test
     fun `a narrative for another puzzle is refused`() {
         val (puzzle, narrative) = load(firstNarrated())
